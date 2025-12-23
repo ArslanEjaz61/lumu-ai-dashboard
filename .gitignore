@@ -17,5 +17,4 @@ Thumbs.db
 
 # Temp files
 *.log
-pdf_content.txt
-extract_pdf.py
+
