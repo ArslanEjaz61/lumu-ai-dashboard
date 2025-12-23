@@ -1,0 +1,121 @@
+
+=== PAGE 1 ===
+
+AI Agency Brief
+Sales & Market Footprint Growth
+LUMU – Pakistan’s premier market place
+December 15, 2025
+Background
+We are an eCommerce-driven business operating in Pakistan, aiming to scale sales, improve
+ROAS, and expand our digital market footprint. Given the evolving buying behavior of Pakistani
+internet users, we are seeking an AI-powered marketing partner that can intelligently plan,
+execute, and optimize our digital advertising and customer acquisition efforts.
+Objective
+1. Boost online sales and conversion rates
+2. Improve ad efficiency and ROI
+3. Strengthen brand visibility across Pakistan
+4. Leverage AI to predict, personalize, and automate marketing decisions
+Core Requirements
+AI-Powered Ad Campaign Optimization
+AI-driven optimization of paid campaigns across:
+• Meta (Facebook & Instagram)
+• Google Display Network (GDN)
+Dynamic budget allocation based on:
+• Performance
+• Time of day
+• Day of week
+• Conversion probability
+Buying Behavior & Audience Intelligence
+• Analyze internet surfers’ buying habits in Pakistan, including:
+• Browsing patterns
+• Purchase intent signals
+• Device usage (Android-heavy, low bandwidth considerations)
+• AI-based audience segmentation (new users, repeat buyers, high-value users)
+Page 1 of 4
+
+=== PAGE 2 ===
+
+Automated Media Buying & Placements
+Automated ad placements across:
+• Relevant websites
+• Apps
+• YouTube & Display inventory
+• Continuous learning to prioritize high-converting placements and suppress low-
+performing ones.
+Creative Intelligence & Optimization
+AI-led:
+• Ad creative suggestions (visuals, formats, CTAs)
+• Copy variants optimized for Pakistani audiences (language tone, cultural relevance)
+• Auto A/B testing of:
+• Creatives
+• Headlines
+• Formats (carousel, video, static)
+Geo & Locality-Based Targeting
+• City-wise and area-wise targeting (Tier 1, Tier 2, Tier 3 cities)
+• Locality-specific messaging based on:
+• Purchasing power
+• Cultural preferences
+• Delivery feasibility
+Weather & Context-Based Advertising
+AI-triggered ad adjustments based on:
+• Weather conditions (heat, rain, winter)
+• Seasonal needs (Ramadan, Eid, wedding season, monsoon)
+• Product and creative alignment with real-time context.
+Additional Measures the AI Agency to Include
+Predictive Demand Forecasting
+AI models to:
+• Predict product demand
+• Anticipate spikes during campaigns, festivals, and salary cycles
+• Alignment of ad spend with inventory availability.
+Page 2 of 4
+
+=== PAGE 3 ===
+
+Conversion Rate Optimization (CRO) via AI
+AI-driven analysis of:
+• Landing pages
+• Funnel drop-offs
+Suggestions for:
+• Page layout improvements
+• CTA positioning
+• Checkout optimization
+AI-Powered Retargeting & Lifecycle Marketing
+Smart retargeting based on:
+• Cart abandonment
+• Product views
+• Previous purchases
+• Lifecycle-based messaging (first-time buyers, loyal customers, dormant users)
+Language & Cultural Adaptation
+AI-supported localization:
+• Urdu / Roman Urdu / English mix
+• Regional phrasing & cultural sensitivities
+• Adaptive tone for mass vs premium audiences.
+Performance Dashboards & Insights
+Real-time AI dashboards showing:
+• Sales attribution
+• ROAS
+• Customer acquisition cost
+• Actionable insights, not just reports.
+Fraud, Wastage & Click Quality Control
+AI detection of:
+• Invalid clicks
+• Bot traffic
+• Low-quality impressions
+• Spend optimization to reduce wastage
+Page 3 of 4
+
+=== PAGE 4 ===
+
+Expected Deliverables from the Agency
+1. A detailed AI-driven marketing roadmap
+2. Platform-wise execution strategy
+3. Case studies or benchmarks (preferably in Pakistan / similar markets)
+4. KPIs and success metrics
+5. Clear AI vs human intervention model
+Closing Note
+We are not looking for conventional media buying. We seek an AI-first growth partner that
+understands Pakistan’s digital behavior, cultural nuances, and eCommerce challenges, and can
+deliver measurable, scalable results.
+LUMU Marketing division
+-end of document-
+Page 4 of 4
