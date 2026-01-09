@@ -1,0 +1,266 @@
+{
+  "name": "LUMU Budget Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lumu-budget-alert",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Budget Alert Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300],
+      "webhookId": "lumu-budget-alert"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-check",
+      "name": "Check Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 500]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5000/api/campaigns/all",
+        "options": {}
+      },
+      "id": "fetch-campaigns",
+      "name": "Fetch All Campaigns",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const campaigns = $input.first().json;\nconst alerts = [];\n\n// Check Meta campaigns\nif (campaigns.meta) {\n  for (const campaign of campaigns.meta) {\n    const percentUsed = (campaign.spend / campaign.budget) * 100;\n    \n    if (percentUsed >= 100) {\n      alerts.push({\n        campaignId: campaign.id,\n        campaignName: campaign.name,\n        platform: 'Meta Ads',\n        budget: campaign.budget,\n        spend: campaign.spend,\n        percentUsed: percentUsed.toFixed(1),\n        alertLevel: 'CRITICAL',\n        status: campaign.status,\n        roas: campaign.roas,\n        message: `⚠️ BUDGET EXHAUSTED: ${campaign.name}`\n      });\n    } else if (percentUsed >= 80) {\n      alerts.push({\n        campaignId: campaign.id,\n        campaignName: campaign.name,\n        platform: 'Meta Ads',\n        budget: campaign.budget,\n        spend: campaign.spend,\n        percentUsed: percentUsed.toFixed(1),\n        alertLevel: 'WARNING',\n        status: campaign.status,\n        roas: campaign.roas,\n        message: `⚡ HIGH SPEND: ${campaign.name} at ${percentUsed.toFixed(0)}%`\n      });\n    }\n  }\n}\n\n// Check Google campaigns\nif (campaigns.google) {\n  for (const campaign of campaigns.google) {\n    const percentUsed = (campaign.spend / campaign.budget) * 100;\n    \n    if (percentUsed >= 100) {\n      alerts.push({\n        campaignId: campaign.id,\n        campaignName: campaign.name,\n        platform: 'Google Ads',\n        budget: campaign.budget,\n        spend: campaign.spend,\n        percentUsed: percentUsed.toFixed(1),\n        alertLevel: 'CRITICAL',\n        status: campaign.status,\n        roas: campaign.roas,\n        message: `⚠️ BUDGET EXHAUSTED: ${campaign.name}`\n      });\n    } else if (percentUsed >= 80) {\n      alerts.push({\n        campaignId: campaign.id,\n        campaignName: campaign.name,\n        platform: 'Google Ads',\n        budget: campaign.budget,\n        spend: campaign.spend,\n        percentUsed: percentUsed.toFixed(1),\n        alertLevel: 'WARNING',\n        status: campaign.status,\n        roas: campaign.roas,\n        message: `⚡ HIGH SPEND: ${campaign.name} at ${percentUsed.toFixed(0)}%`\n      });\n    }\n  }\n}\n\nreturn alerts.map(alert => ({ json: alert }));"
+      },
+      "id": "check-budgets",
+      "name": "Check Budget Thresholds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-alerts",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-alerts",
+      "name": "Has Alerts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [960, 400]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "alert-message",
+              "name": "alertMessage",
+              "value": "=🚨 LUMU BUDGET ALERT\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📢 Campaign: {{ $json.campaignName }}\n📊 Platform: {{ $json.platform }}\n💰 Budget: PKR {{ $json.budget.toLocaleString() }}\n💸 Spent: PKR {{ $json.spend.toLocaleString() }}\n📈 Usage: {{ $json.percentUsed }}%\n🎯 ROAS: {{ $json.roas }}x\n\n⚠️ Alert Level: {{ $json.alertLevel }}\n\n{{ $json.alertLevel === 'CRITICAL' ? '🔴 ACTION REQUIRED: Campaign may need budget increase or pause.' : '🟡 MONITOR: Spending faster than expected.' }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLUMU AI Dashboard",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-alert",
+      "name": "Format Alert Message",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $json.alertMessage }}",
+        "additionalFields": {}
+      },
+      "id": "send-telegram",
+      "name": "Send Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1440, 200]
+    },
+    {
+      "parameters": {
+        "channel": "={{ $env.SLACK_ALERT_CHANNEL || '#budget-alerts' }}",
+        "text": "={{ $json.alertMessage }}",
+        "otherOptions": {}
+      },
+      "id": "send-slack",
+      "name": "Send Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1440, 400]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $env.BUDGET_SHEET_ID }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Budget Alerts",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {}
+        },
+        "options": {}
+      },
+      "id": "log-sheet",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1440, 600]
+    },
+    {
+      "parameters": {},
+      "id": "no-alerts",
+      "name": "No Alerts - End",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1200, 500]
+    }
+  ],
+  "connections": {
+    "Budget Alert Webhook": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Fetch All Campaigns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch All Campaigns": {
+      "main": [
+        [
+          {
+            "node": "Check Budget Thresholds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Budget Thresholds": {
+      "main": [
+        [
+          {
+            "node": "Has Alerts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Alerts?": {
+      "main": [
+        [
+          {
+            "node": "Format Alert Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Alerts - End",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Alert Message": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Slack Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "LUMU",
+      "createdAt": "2025-01-09T00:00:00.000Z",
+      "updatedAt": "2025-01-09T00:00:00.000Z"
+    },
+    {
+      "name": "Alerts",
+      "createdAt": "2025-01-09T00:00:00.000Z",
+      "updatedAt": "2025-01-09T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 2,
+  "updatedAt": "2025-01-09T00:00:00.000Z",
+  "versionId": "1"
+}

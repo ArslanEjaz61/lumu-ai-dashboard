@@ -1,0 +1,258 @@
+{
+  "name": "LUMU Daily Performance Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lumu-daily-report",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Manual Trigger Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 500],
+      "webhookId": "lumu-daily-report"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5000/api/campaigns/all",
+        "options": {}
+      },
+      "id": "fetch-campaigns",
+      "name": "Fetch Campaigns Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5000/api/fraud/overview",
+        "options": {}
+      },
+      "id": "fetch-fraud",
+      "name": "Fetch Fraud Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 560]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5000/api/geo/cities",
+        "options": {}
+      },
+      "id": "fetch-geo",
+      "name": "Fetch Geo Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 720]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "mergeByFields": {
+          "values": []
+        },
+        "options": {}
+      },
+      "id": "merge-data",
+      "name": "Merge All Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [700, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Combine all data\nconst campaigns = items[0]?.json || {};\nconst fraud = items[1]?.json || {};\nconst geo = items[2]?.json || {};\n\n// Calculate totals\nconst metaCampaigns = campaigns.meta || [];\nconst googleCampaigns = campaigns.google || [];\nconst allCampaigns = [...metaCampaigns, ...googleCampaigns];\n\nconst totalSpend = allCampaigns.reduce((sum, c) => sum + (c.spend || 0), 0);\nconst totalRevenue = allCampaigns.reduce((sum, c) => sum + (c.revenue || 0), 0);\nconst totalConversions = allCampaigns.reduce((sum, c) => sum + (c.conversions || 0), 0);\nconst roas = totalSpend > 0 ? (totalRevenue / totalSpend).toFixed(2) : 0;\n\n// Top 3 campaigns by ROAS\nconst topCampaigns = allCampaigns\n  .sort((a, b) => b.roas - a.roas)\n  .slice(0, 3)\n  .map(c => `${c.name}: ${c.roas}x ROAS`);\n\n// Format date\nconst today = new Date().toLocaleDateString('en-PK', {\n  weekday: 'long',\n  year: 'numeric',\n  month: 'long',\n  day: 'numeric'\n});\n\nreturn [{\n  json: {\n    reportDate: today,\n    summary: {\n      totalRevenue: `PKR ${(totalRevenue / 1000).toFixed(0)}K`,\n      totalSpend: `PKR ${(totalSpend / 1000).toFixed(0)}K`,\n      roas: `${roas}x`,\n      conversions: totalConversions,\n      fraudBlocked: fraud.moneySaved ? `PKR ${(fraud.moneySaved / 1000).toFixed(1)}K` : 'N/A',\n      invalidClicks: fraud.invalidClicks || 0\n    },\n    topCampaigns: topCampaigns,\n    activeCampaigns: allCampaigns.filter(c => c.status === 'ENABLED' || c.status === 'ACTIVE').length,\n    platforms: {\n      meta: metaCampaigns.length,\n      google: googleCampaigns.length\n    }\n  }\n}];"
+      },
+      "id": "generate-report",
+      "name": "Generate Report Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [940, 500]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "email-subject",
+              "name": "subject",
+              "value": "=📊 LUMU Daily Report - {{ $json.reportDate }}",
+              "type": "string"
+            },
+            {
+              "id": "email-body",
+              "name": "body",
+              "value": "=🏪 LUMU Daily Performance Report\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📅 {{ $json.reportDate }}\n\n💰 KEY METRICS\n• Revenue: {{ $json.summary.totalRevenue }}\n• Ad Spend: {{ $json.summary.totalSpend }}\n• ROAS: {{ $json.summary.roas }}\n• Conversions: {{ $json.summary.conversions }}\n\n🛡️ FRAUD PROTECTION\n• Money Saved: {{ $json.summary.fraudBlocked }}\n• Invalid Clicks Blocked: {{ $json.summary.invalidClicks }}\n\n🏆 TOP CAMPAIGNS\n{{ $json.topCampaigns.join('\\n• ') }}\n\n📊 PLATFORMS\n• Meta Ads: {{ $json.platforms.meta }} campaigns\n• Google Ads: {{ $json.platforms.google }} campaigns\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nPowered by LUMU AI Dashboard",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-email",
+      "name": "Format Email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1180, 500]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $env.REPORT_EMAIL || 'team@lumu.pk' }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "send-email",
+      "name": "Send Email Report",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1420, 400]
+    },
+    {
+      "parameters": {
+        "channel": "={{ $env.SLACK_CHANNEL || '#marketing-reports' }}",
+        "text": "={{ $json.body }}",
+        "otherOptions": {}
+      },
+      "id": "send-slack",
+      "name": "Send to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1420, 600]
+    }
+  ],
+  "connections": {
+    "Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "Fetch Campaigns Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger Webhook": {
+      "main": [
+        [
+          {
+            "node": "Fetch Campaigns Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Campaigns Data": {
+      "main": [
+        [
+          {
+            "node": "Fetch Fraud Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Fraud Data": {
+      "main": [
+        [
+          {
+            "node": "Fetch Geo Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Geo Data": {
+      "main": [
+        [
+          {
+            "node": "Merge All Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Data": {
+      "main": [
+        [
+          {
+            "node": "Generate Report Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report Summary": {
+      "main": [
+        [
+          {
+            "node": "Format Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Email": {
+      "main": [
+        [
+          {
+            "node": "Send Email Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "LUMU",
+      "createdAt": "2025-01-09T00:00:00.000Z",
+      "updatedAt": "2025-01-09T00:00:00.000Z"
+    },
+    {
+      "name": "Reports",
+      "createdAt": "2025-01-09T00:00:00.000Z",
+      "updatedAt": "2025-01-09T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 2,
+  "updatedAt": "2025-01-09T00:00:00.000Z",
+  "versionId": "1"
+}

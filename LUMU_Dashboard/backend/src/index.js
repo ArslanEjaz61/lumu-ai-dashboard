@@ -10,6 +10,8 @@ const audienceRoutes = require('./routes/audience');
 const fraudRoutes = require('./routes/fraud');
 const insightsRoutes = require('./routes/insights');
 const geoRoutes = require('./routes/geo');
+const settingsRoutes = require('./routes/settings');
+const usersRoutes = require('./routes/users');
 
 const app = express();
 
@@ -29,6 +31,8 @@ app.use('/api/audience', audienceRoutes);
 app.use('/api/fraud', fraudRoutes);
 app.use('/api/insights', insightsRoutes);
 app.use('/api/geo', geoRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/users', usersRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

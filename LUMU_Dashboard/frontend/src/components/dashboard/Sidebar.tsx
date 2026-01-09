@@ -13,8 +13,9 @@ import {
     Menu,
     X,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { api, BrandingData } from "@/lib/api";
 
 const navItems = [
     { href: "/", label: "Overview", icon: LayoutDashboard },
@@ -28,6 +29,25 @@ const navItems = [
 export function Sidebar() {
     const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
+    const [branding, setBranding] = useState<BrandingData>({
+        dashboardName: 'LUMU',
+        tagline: 'AI Dashboard',
+        logoUrl: '',
+        primaryColor: '#10b981'
+    });
+
+    useEffect(() => {
+        const fetchBranding = async () => {
+            try {
+                const data = await api.getBranding();
+                setBranding(data);
+            } catch (error) {
+                // Use defaults if API fails
+                console.error('Failed to fetch branding:', error);
+            }
+        };
+        fetchBranding();
+    }, []);
 
     return (
         <>
@@ -57,12 +77,19 @@ export function Sidebar() {
             >
                 {/* Logo */}
                 <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-700">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-lg">
-                        L
+                    <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg"
+                        style={{ background: `linear-gradient(135deg, ${branding.primaryColor}, #06b6d4)` }}
+                    >
+                        {branding.logoUrl ? (
+                            <img src={branding.logoUrl} alt="Logo" className="w-8 h-8 rounded" />
+                        ) : (
+                            branding.dashboardName.charAt(0).toUpperCase()
+                        )}
                     </div>
                     <div>
-                        <h1 className="font-bold text-lg">LUMU</h1>
-                        <p className="text-xs text-slate-400">AI Dashboard</p>
+                        <h1 className="font-bold text-lg">{branding.dashboardName}</h1>
+                        <p className="text-xs text-slate-400">{branding.tagline}</p>
                     </div>
                 </div>
 
@@ -95,7 +122,12 @@ export function Sidebar() {
                 <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700">
                     <Link
                         href="/settings"
-                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all"
+                        className={cn(
+                            "flex items-center gap-3 px-4 py-3 rounded-lg transition-all",
+                            pathname === "/settings"
+                                ? "bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-400 border-l-2 border-emerald-400"
+                                : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                        )}
                     >
                         <Settings size={20} />
                         <span className="font-medium">Settings</span>
