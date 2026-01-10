@@ -1,312 +1,669 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
+    Plus,
     TrendingUp,
     TrendingDown,
     Play,
     Pause,
-    ExternalLink,
+    Edit2,
+    Trash2,
     Loader2,
     RefreshCw,
+    Target,
+    DollarSign,
+    Users,
+    Calendar,
+    Facebook,
+    Instagram,
+    Globe,
+    Eye,
+    Sparkles,
+    X
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { api, Campaign } from "@/lib/api";
 
-interface CampaignTableProps {
-    campaigns: Campaign[];
-    loading: boolean;
-}
+// API Base URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-function CampaignTable({ campaigns, loading }: CampaignTableProps) {
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-            </div>
-        );
-    }
-
-    if (campaigns.length === 0) {
-        return (
-            <div className="text-center py-12 text-slate-500">
-                No campaigns found
-            </div>
-        );
-    }
-
-    return (
-        <div className="rounded-lg border">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead>Campaign</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Spend</TableHead>
-                        <TableHead className="text-right">Clicks</TableHead>
-                        <TableHead className="text-right">CTR</TableHead>
-                        <TableHead className="text-right">Conv.</TableHead>
-                        <TableHead className="text-right">Revenue</TableHead>
-                        <TableHead className="text-right">ROAS</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {campaigns.map((campaign) => (
-                        <TableRow key={campaign.id}>
-                            <TableCell>
-                                <div className="font-medium">{campaign.name}</div>
-                                <div className="text-xs text-slate-500">
-                                    Budget: PKR {(campaign.budget / 1000).toFixed(0)}K
-                                </div>
-                            </TableCell>
-                            <TableCell>
-                                <Badge
-                                    variant="outline"
-                                    className={
-                                        campaign.status === "ACTIVE" || campaign.status === "ENABLED"
-                                            ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                                            : "bg-slate-50 text-slate-600 border-slate-200"
-                                    }
-                                >
-                                    <span className="flex items-center gap-1">
-                                        {campaign.status === "ACTIVE" || campaign.status === "ENABLED" ? (
-                                            <Play size={10} />
-                                        ) : (
-                                            <Pause size={10} />
-                                        )}
-                                        {campaign.status}
-                                    </span>
-                                </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                                PKR {(campaign.spend / 1000).toFixed(1)}K
-                            </TableCell>
-                            <TableCell className="text-right">
-                                {campaign.clicks.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-right">{campaign.ctr}%</TableCell>
-                            <TableCell className="text-right">{campaign.conversions}</TableCell>
-                            <TableCell className="text-right">
-                                PKR {(campaign.revenue / 1000).toFixed(0)}K
-                            </TableCell>
-                            <TableCell className="text-right">
-                                <span
-                                    className={`flex items-center justify-end gap-1 font-bold ${campaign.roas >= 3 ? "text-emerald-600" : campaign.roas >= 2 ? "text-amber-600" : "text-red-600"
-                                        }`}
-                                >
-                                    {campaign.roas >= 3 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                    {campaign.roas}x
-                                </span>
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </div>
-    );
-}
-
-export default function CampaignsPage() {
-    const [metaCampaigns, setMetaCampaigns] = useState<Campaign[]>([]);
-    const [googleCampaigns, setGoogleCampaigns] = useState<Campaign[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    const fetchCampaigns = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const data = await api.getAllCampaigns();
-            setMetaCampaigns(data.meta || []);
-            setGoogleCampaigns(data.google || []);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to load campaigns");
-            // Use fallback mock data
-            setMetaCampaigns([
-                { id: "meta_1", name: "Winter Sale - Lahore", status: "ACTIVE", platform: "meta", budget: 50000, spend: 42500, impressions: 125000, clicks: 3750, ctr: 3.0, cpc: 11.33, conversions: 85, revenue: 127500, roas: 3.0 },
-                { id: "meta_2", name: "Instagram Stories - Karachi", status: "ACTIVE", platform: "meta", budget: 35000, spend: 28000, impressions: 95000, clicks: 2850, ctr: 3.0, cpc: 9.82, conversions: 62, revenue: 93000, roas: 3.32 },
-                { id: "meta_3", name: "Retargeting - Cart Abandoners", status: "ACTIVE", platform: "meta", budget: 20000, spend: 18500, impressions: 45000, clicks: 1800, ctr: 4.0, cpc: 10.28, conversions: 48, revenue: 72000, roas: 3.89 },
-            ]);
-            setGoogleCampaigns([
-                { id: "google_1", name: "Search - Brand Keywords", status: "ENABLED", platform: "google", budget: 40000, spend: 35200, impressions: 85000, clicks: 4250, ctr: 5.0, cpc: 8.28, conversions: 95, revenue: 142500, roas: 4.05 },
-                { id: "google_2", name: "Shopping - All Products", status: "ENABLED", platform: "google", budget: 35000, spend: 31200, impressions: 145000, clicks: 5800, ctr: 4.0, cpc: 5.38, conversions: 125, revenue: 187500, roas: 6.01 },
-                { id: "google_3", name: "Display - Remarketing", status: "ENABLED", platform: "google", budget: 25000, spend: 21800, impressions: 320000, clicks: 1920, ctr: 0.6, cpc: 11.35, conversions: 42, revenue: 63000, roas: 2.89 },
-                { id: "google_4", name: "YouTube - Product Showcase", status: "ENABLED", platform: "google", budget: 30000, spend: 26500, impressions: 180000, clicks: 2700, ctr: 1.5, cpc: 9.81, conversions: 38, revenue: 57000, roas: 2.15 },
-            ]);
-        } finally {
-            setLoading(false);
-        }
+interface Campaign {
+    _id: string;
+    name: string;
+    description: string;
+    objective: string;
+    status: string;
+    budget: {
+        daily: number;
+        total: number;
+        spent: number;
+        currency: string;
     };
+    platforms: string[];
+    targeting: {
+        locations: Array<{ city: string; region: string }>;
+        ageRange: { min: number; max: number };
+        gender: string;
+        interests: string[];
+    };
+    metrics: {
+        impressions: number;
+        clicks: number;
+        conversions: number;
+        revenue: number;
+        ctr: number;
+        roas: number;
+    };
+    createdAt: string;
+}
+
+export default function CampaignManagerPage() {
+    const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
+    const [saving, setSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState<'all' | 'active' | 'draft' | 'paused'>('all');
+
+    const [formData, setFormData] = useState({
+        name: '',
+        description: '',
+        objective: 'sales',
+        dailyBudget: 1000,
+        totalBudget: 30000,
+        platforms: ['facebook', 'instagram'],
+        cities: ['Karachi', 'Lahore'],
+        ageMin: 18,
+        ageMax: 45,
+        gender: 'all',
+        interests: ''
+    });
 
     useEffect(() => {
         fetchCampaigns();
     }, []);
 
-    const totalMetaSpend = metaCampaigns.reduce((sum, c) => sum + c.spend, 0);
-    const totalGoogleSpend = googleCampaigns.reduce((sum, c) => sum + c.spend, 0);
-    const totalMetaRevenue = metaCampaigns.reduce((sum, c) => sum + c.revenue, 0);
-    const totalGoogleRevenue = googleCampaigns.reduce((sum, c) => sum + c.revenue, 0);
+    const fetchCampaigns = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch(`${API_URL}/campaigns`);
+            const data = await res.json();
+            setCampaigns(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Failed to fetch campaigns:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleCreate = async () => {
+        try {
+            setSaving(true);
+            const res = await fetch(`${API_URL}/campaigns`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: formData.name,
+                    description: formData.description,
+                    objective: formData.objective,
+                    budget: {
+                        daily: formData.dailyBudget,
+                        total: formData.totalBudget,
+                        currency: 'PKR'
+                    },
+                    platforms: formData.platforms,
+                    targeting: {
+                        locations: formData.cities.map(city => ({ city, country: 'Pakistan' })),
+                        ageRange: { min: formData.ageMin, max: formData.ageMax },
+                        gender: formData.gender,
+                        interests: formData.interests.split(',').map(i => i.trim()).filter(Boolean)
+                    },
+                    status: 'draft'
+                })
+            });
+            if (res.ok) {
+                fetchCampaigns();
+                setShowCreateModal(false);
+                resetForm();
+            }
+        } catch (error) {
+            console.error('Failed to create campaign:', error);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleUpdate = async () => {
+        if (!editingCampaign) return;
+        try {
+            setSaving(true);
+            const res = await fetch(`${API_URL}/campaigns/${editingCampaign._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: formData.name,
+                    description: formData.description,
+                    objective: formData.objective,
+                    budget: {
+                        daily: formData.dailyBudget,
+                        total: formData.totalBudget,
+                        currency: 'PKR'
+                    },
+                    platforms: formData.platforms,
+                    targeting: {
+                        locations: formData.cities.map(city => ({ city, country: 'Pakistan' })),
+                        ageRange: { min: formData.ageMin, max: formData.ageMax },
+                        gender: formData.gender,
+                        interests: formData.interests.split(',').map(i => i.trim()).filter(Boolean)
+                    }
+                })
+            });
+            if (res.ok) {
+                fetchCampaigns();
+                setShowCreateModal(false);
+                setEditingCampaign(null);
+                resetForm();
+            }
+        } catch (error) {
+            console.error('Failed to update campaign:', error);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Delete this campaign?')) return;
+        try {
+            await fetch(`${API_URL}/campaigns/${id}`, { method: 'DELETE' });
+            fetchCampaigns();
+        } catch (error) {
+            console.error('Failed to delete:', error);
+        }
+    };
+
+    const handleToggleStatus = async (id: string, currentStatus: string) => {
+        const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+        try {
+            await fetch(`${API_URL}/campaigns/${id}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            fetchCampaigns();
+        } catch (error) {
+            console.error('Failed to toggle status:', error);
+        }
+    };
+
+    const handleEdit = (campaign: Campaign) => {
+        setEditingCampaign(campaign);
+        setFormData({
+            name: campaign.name,
+            description: campaign.description || '',
+            objective: campaign.objective,
+            dailyBudget: campaign.budget?.daily || 1000,
+            totalBudget: campaign.budget?.total || 30000,
+            platforms: campaign.platforms || ['facebook', 'instagram'],
+            cities: campaign.targeting?.locations?.map(l => l.city) || ['Karachi'],
+            ageMin: campaign.targeting?.ageRange?.min || 18,
+            ageMax: campaign.targeting?.ageRange?.max || 45,
+            gender: campaign.targeting?.gender || 'all',
+            interests: campaign.targeting?.interests?.join(', ') || ''
+        });
+        setShowCreateModal(true);
+    };
+
+    const resetForm = () => {
+        setFormData({
+            name: '',
+            description: '',
+            objective: 'sales',
+            dailyBudget: 1000,
+            totalBudget: 30000,
+            platforms: ['facebook', 'instagram'],
+            cities: ['Karachi', 'Lahore'],
+            ageMin: 18,
+            ageMax: 45,
+            gender: 'all',
+            interests: ''
+        });
+    };
+
+    const filteredCampaigns = campaigns.filter(c => {
+        if (activeTab === 'active') return c.status === 'active';
+        if (activeTab === 'draft') return c.status === 'draft';
+        if (activeTab === 'paused') return c.status === 'paused';
+        return true;
+    });
+
+    const getStatusColor = (status: string) => {
+        const colors: Record<string, string> = {
+            active: 'bg-emerald-100 text-emerald-700',
+            draft: 'bg-slate-100 text-slate-700',
+            paused: 'bg-amber-100 text-amber-700',
+            completed: 'bg-blue-100 text-blue-700'
+        };
+        return colors[status] || 'bg-slate-100 text-slate-700';
+    };
+
+    const getObjectiveIcon = (objective: string) => {
+        switch (objective) {
+            case 'sales': return <DollarSign size={14} />;
+            case 'awareness': return <Eye size={14} />;
+            case 'retargeting': return <Users size={14} />;
+            case 'traffic': return <Globe size={14} />;
+            default: return <Target size={14} />;
+        }
+    };
+
+    // Stats
+    const totalSpent = campaigns.reduce((sum, c) => sum + (c.budget?.spent || 0), 0);
+    const totalRevenue = campaigns.reduce((sum, c) => sum + (c.metrics?.revenue || 0), 0);
+    const activeCampaigns = campaigns.filter(c => c.status === 'active').length;
 
     return (
         <div className="space-y-6">
-            {/* Page Header */}
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                        Campaign Performance
-                    </h1>
-                    <p className="text-slate-500">Monitor and compare your ad campaigns across platforms</p>
+                    <h1 className="text-2xl font-bold text-slate-900">Campaign Manager</h1>
+                    <p className="text-slate-500">Create and manage your advertising campaigns</p>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={fetchCampaigns} disabled={loading}>
                         <RefreshCw size={16} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
                     </Button>
-                    <Button className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600">
-                        <ExternalLink size={16} className="mr-2" />
-                        Open Ads Manager
+                    <Button
+                        onClick={() => { setEditingCampaign(null); resetForm(); setShowCreateModal(true); }}
+                        className="bg-gradient-to-r from-emerald-500 to-cyan-500"
+                    >
+                        <Plus size={16} className="mr-2" />
+                        New Campaign
                     </Button>
                 </div>
             </div>
 
-            {error && (
-                <div className="bg-amber-50 text-amber-700 px-4 py-3 rounded-lg text-sm">
-                    ⚠️ Using demo data. {error}
-                </div>
-            )}
-
-            {/* Platform Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="border-l-4 border-l-blue-500">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center">
-                                <span className="text-blue-600 font-bold text-sm">M</span>
-                            </div>
-                            Meta Ads
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-3 gap-4">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-slate-500">Spend</p>
-                                <p className="text-xl font-bold">PKR {(totalMetaSpend / 1000).toFixed(0)}K</p>
+                                <p className="text-sm text-slate-500">Total Campaigns</p>
+                                <p className="text-2xl font-bold">{campaigns.length}</p>
                             </div>
-                            <div>
-                                <p className="text-sm text-slate-500">Revenue</p>
-                                <p className="text-xl font-bold">PKR {(totalMetaRevenue / 1000).toFixed(0)}K</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-slate-500">ROAS</p>
-                                <p className="text-xl font-bold text-emerald-600">
-                                    {totalMetaSpend > 0 ? (totalMetaRevenue / totalMetaSpend).toFixed(2) : '0.00'}x
-                                </p>
+                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                <Target className="text-blue-600" size={20} />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
-
-                <Card className="border-l-4 border-l-emerald-500">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                            <div className="w-8 h-8 rounded bg-emerald-100 flex items-center justify-center">
-                                <span className="text-emerald-600 font-bold text-sm">G</span>
-                            </div>
-                            Google Ads
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-3 gap-4">
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-slate-500">Spend</p>
-                                <p className="text-xl font-bold">PKR {(totalGoogleSpend / 1000).toFixed(0)}K</p>
+                                <p className="text-sm text-slate-500">Active</p>
+                                <p className="text-2xl font-bold text-emerald-600">{activeCampaigns}</p>
                             </div>
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                                <Play className="text-emerald-600" size={20} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-slate-500">Total Spent</p>
+                                <p className="text-2xl font-bold">PKR {(totalSpent / 1000).toFixed(0)}K</p>
+                            </div>
+                            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                                <DollarSign className="text-amber-600" size={20} />
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm text-slate-500">Revenue</p>
-                                <p className="text-xl font-bold">PKR {(totalGoogleRevenue / 1000).toFixed(0)}K</p>
+                                <p className="text-2xl font-bold text-emerald-600">PKR {(totalRevenue / 1000).toFixed(0)}K</p>
                             </div>
-                            <div>
-                                <p className="text-sm text-slate-500">ROAS</p>
-                                <p className="text-xl font-bold text-emerald-600">
-                                    {totalGoogleSpend > 0 ? (totalGoogleRevenue / totalGoogleSpend).toFixed(2) : '0.00'}x
-                                </p>
+                            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                                <TrendingUp className="text-emerald-600" size={20} />
                             </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Campaign Tables */}
-            <Tabs defaultValue="all" className="space-y-4">
-                <TabsList>
-                    <TabsTrigger value="all">All Campaigns</TabsTrigger>
-                    <TabsTrigger value="meta">Meta Ads ({metaCampaigns.length})</TabsTrigger>
-                    <TabsTrigger value="google">Google Ads ({googleCampaigns.length})</TabsTrigger>
-                </TabsList>
+            {/* Tabs */}
+            <div className="flex gap-2 border-b">
+                {['all', 'active', 'draft', 'paused'].map((tab) => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab as typeof activeTab)}
+                        className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px capitalize ${activeTab === tab
+                                ? 'border-emerald-500 text-emerald-600'
+                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        {tab} ({tab === 'all' ? campaigns.length : campaigns.filter(c => c.status === tab).length})
+                    </button>
+                ))}
+            </div>
 
-                <TabsContent value="all" className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded bg-blue-100 flex items-center justify-center">
-                                    <span className="text-blue-600 font-bold text-xs">M</span>
+            {/* Campaigns Grid */}
+            {loading ? (
+                <div className="flex items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                </div>
+            ) : filteredCampaigns.length === 0 ? (
+                <div className="text-center py-12">
+                    <Target className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500">No campaigns found</p>
+                    <Button
+                        onClick={() => { resetForm(); setShowCreateModal(true); }}
+                        className="mt-4"
+                    >
+                        Create First Campaign
+                    </Button>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredCampaigns.map((campaign) => (
+                        <Card key={campaign._id} className="hover:shadow-lg transition-shadow">
+                            <CardHeader className="pb-2">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                        <CardTitle className="text-lg">{campaign.name}</CardTitle>
+                                        <p className="text-sm text-slate-500 mt-1">{campaign.description || 'No description'}</p>
+                                    </div>
+                                    <Badge className={getStatusColor(campaign.status)}>
+                                        {campaign.status === 'active' && <Play size={10} className="mr-1" />}
+                                        {campaign.status === 'paused' && <Pause size={10} className="mr-1" />}
+                                        {campaign.status}
+                                    </Badge>
                                 </div>
-                                Meta Campaigns
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                {/* Objective & Platforms */}
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-1 text-sm text-slate-600">
+                                        {getObjectiveIcon(campaign.objective)}
+                                        <span className="capitalize">{campaign.objective}</span>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        {campaign.platforms?.includes('facebook') && <Facebook size={14} className="text-blue-600" />}
+                                        {campaign.platforms?.includes('instagram') && <Instagram size={14} className="text-pink-600" />}
+                                        {campaign.platforms?.includes('google') && <Globe size={14} className="text-green-600" />}
+                                    </div>
+                                </div>
+
+                                {/* Budget */}
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <p className="text-slate-500">Daily Budget</p>
+                                        <p className="font-semibold">PKR {campaign.budget?.daily?.toLocaleString() || 0}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-slate-500">Spent</p>
+                                        <p className="font-semibold">PKR {campaign.budget?.spent?.toLocaleString() || 0}</p>
+                                    </div>
+                                </div>
+
+                                {/* Metrics */}
+                                <div className="grid grid-cols-3 gap-2 text-center bg-slate-50 rounded-lg p-3">
+                                    <div>
+                                        <p className="text-xs text-slate-500">Clicks</p>
+                                        <p className="font-bold">{campaign.metrics?.clicks?.toLocaleString() || 0}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500">Conv.</p>
+                                        <p className="font-bold">{campaign.metrics?.conversions || 0}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500">ROAS</p>
+                                        <p className={`font-bold ${(campaign.metrics?.roas || 0) >= 2 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                            {(campaign.metrics?.roas || 0).toFixed(1)}x
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex gap-2 pt-2 border-t">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="flex-1"
+                                        onClick={() => handleEdit(campaign)}
+                                    >
+                                        <Edit2 size={14} className="mr-1" /> Edit
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleToggleStatus(campaign._id, campaign.status)}
+                                        className={campaign.status === 'active' ? 'text-amber-600' : 'text-emerald-600'}
+                                    >
+                                        {campaign.status === 'active' ? <Pause size={14} /> : <Play size={14} />}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDelete(campaign._id)}
+                                        className="text-red-500"
+                                    >
+                                        <Trash2 size={14} />
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
+
+            {/* Create/Edit Modal */}
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <CardHeader>
+                            <CardTitle className="flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                    {editingCampaign ? <Edit2 className="text-blue-500" /> : <Plus className="text-emerald-500" />}
+                                    {editingCampaign ? 'Edit Campaign' : 'New Campaign'}
+                                </span>
+                                <button onClick={() => { setShowCreateModal(false); setEditingCampaign(null); }}>
+                                    <X size={20} />
+                                </button>
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <CampaignTable campaigns={metaCampaigns} loading={loading} />
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded bg-emerald-100 flex items-center justify-center">
-                                    <span className="text-emerald-600 font-bold text-xs">G</span>
+                        <CardContent className="space-y-6">
+                            {/* Name & Description */}
+                            <div className="grid grid-cols-1 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium">Campaign Name *</label>
+                                    <input
+                                        type="text"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        placeholder="e.g., Winter Sale - Lahore"
+                                        className="w-full mt-1 p-3 border rounded-lg"
+                                    />
                                 </div>
-                                Google Campaigns
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <CampaignTable campaigns={googleCampaigns} loading={loading} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+                                <div>
+                                    <label className="text-sm font-medium">Description</label>
+                                    <textarea
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                        placeholder="Campaign description..."
+                                        className="w-full mt-1 p-3 border rounded-lg h-20 resize-none"
+                                    />
+                                </div>
+                            </div>
 
-                <TabsContent value="meta">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Meta Campaigns</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <CampaignTable campaigns={metaCampaigns} loading={loading} />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+                            {/* Objective */}
+                            <div>
+                                <label className="text-sm font-medium">Campaign Objective</label>
+                                <div className="grid grid-cols-3 gap-3 mt-2">
+                                    {[
+                                        { value: 'sales', label: 'Sales', icon: DollarSign, desc: 'Drive purchases' },
+                                        { value: 'awareness', label: 'Awareness', icon: Eye, desc: 'Increase visibility' },
+                                        { value: 'retargeting', label: 'Retargeting', icon: Users, desc: 'Re-engage visitors' }
+                                    ].map((obj) => (
+                                        <button
+                                            key={obj.value}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, objective: obj.value })}
+                                            className={`p-4 border-2 rounded-xl text-left transition-all ${formData.objective === obj.value
+                                                    ? 'border-emerald-500 bg-emerald-50'
+                                                    : 'border-slate-200 hover:border-slate-300'
+                                                }`}
+                                        >
+                                            <obj.icon size={24} className={formData.objective === obj.value ? 'text-emerald-600' : 'text-slate-400'} />
+                                            <p className="font-semibold mt-2">{obj.label}</p>
+                                            <p className="text-xs text-slate-500">{obj.desc}</p>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
 
-                <TabsContent value="google">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Google Campaigns</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <CampaignTable campaigns={googleCampaigns} loading={loading} />
+                            {/* Budget */}
+                            <div>
+                                <label className="text-sm font-medium">Budget (PKR)</label>
+                                <div className="grid grid-cols-2 gap-4 mt-2">
+                                    <div>
+                                        <label className="text-xs text-slate-500">Daily Budget</label>
+                                        <input
+                                            type="number"
+                                            value={formData.dailyBudget}
+                                            onChange={(e) => setFormData({ ...formData, dailyBudget: Number(e.target.value) })}
+                                            className="w-full mt-1 p-2 border rounded-lg"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-500">Total Budget</label>
+                                        <input
+                                            type="number"
+                                            value={formData.totalBudget}
+                                            onChange={(e) => setFormData({ ...formData, totalBudget: Number(e.target.value) })}
+                                            className="w-full mt-1 p-2 border rounded-lg"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Platforms */}
+                            <div>
+                                <label className="text-sm font-medium">Platforms</label>
+                                <div className="flex gap-3 mt-2">
+                                    {[
+                                        { id: 'facebook', icon: Facebook, color: 'blue' },
+                                        { id: 'instagram', icon: Instagram, color: 'pink' },
+                                        { id: 'google', icon: Globe, color: 'green' }
+                                    ].map((platform) => (
+                                        <label key={platform.id} className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.platforms.includes(platform.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setFormData({ ...formData, platforms: [...formData.platforms, platform.id] });
+                                                    } else {
+                                                        setFormData({ ...formData, platforms: formData.platforms.filter(p => p !== platform.id) });
+                                                    }
+                                                }}
+                                                className="rounded"
+                                            />
+                                            <platform.icon size={16} className={`text-${platform.color}-600`} />
+                                            <span className="capitalize text-sm">{platform.id}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Targeting */}
+                            <div>
+                                <label className="text-sm font-medium">Target Audience</label>
+                                <div className="grid grid-cols-2 gap-4 mt-2">
+                                    <div>
+                                        <label className="text-xs text-slate-500">Age Range</label>
+                                        <div className="flex gap-2 mt-1">
+                                            <input
+                                                type="number"
+                                                value={formData.ageMin}
+                                                onChange={(e) => setFormData({ ...formData, ageMin: Number(e.target.value) })}
+                                                className="w-full p-2 border rounded-lg"
+                                                placeholder="Min"
+                                            />
+                                            <span className="self-center">-</span>
+                                            <input
+                                                type="number"
+                                                value={formData.ageMax}
+                                                onChange={(e) => setFormData({ ...formData, ageMax: Number(e.target.value) })}
+                                                className="w-full p-2 border rounded-lg"
+                                                placeholder="Max"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-slate-500">Gender</label>
+                                        <select
+                                            value={formData.gender}
+                                            onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                                            className="w-full mt-1 p-2 border rounded-lg bg-white"
+                                        >
+                                            <option value="all">All</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="mt-3">
+                                    <label className="text-xs text-slate-500">Interests (comma separated)</label>
+                                    <input
+                                        type="text"
+                                        value={formData.interests}
+                                        onChange={(e) => setFormData({ ...formData, interests: e.target.value })}
+                                        placeholder="e.g., fashion, electronics, sports"
+                                        className="w-full mt-1 p-2 border rounded-lg"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex gap-3 pt-4 border-t">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => { setShowCreateModal(false); setEditingCampaign(null); resetForm(); }}
+                                    className="flex-1"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={editingCampaign ? handleUpdate : handleCreate}
+                                    disabled={saving || !formData.name}
+                                    className={`flex-1 ${editingCampaign ? 'bg-blue-600' : 'bg-emerald-600'}`}
+                                >
+                                    {saving ? (
+                                        <Loader2 size={16} className="mr-2 animate-spin" />
+                                    ) : editingCampaign ? (
+                                        <Edit2 size={16} className="mr-2" />
+                                    ) : (
+                                        <Plus size={16} className="mr-2" />
+                                    )}
+                                    {saving ? 'Saving...' : editingCampaign ? 'Update Campaign' : 'Create Campaign'}
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
-                </TabsContent>
-            </Tabs>
+                </div>
+            )}
         </div>
     );
 }

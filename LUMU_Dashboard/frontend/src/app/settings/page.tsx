@@ -58,6 +58,15 @@ export default function SettingsPage() {
     const [addingUser, setAddingUser] = useState(false);
     const [users, setUsers] = useState<UserData[]>([]);
 
+    // Edit user modal
+    const [editingUser, setEditingUser] = useState<UserData | null>(null);
+    const [editForm, setEditForm] = useState<{ name: string; email: string; role: 'viewer' | 'admin' | 'manager'; department: string; active: boolean }>({ name: '', email: '', role: 'viewer', department: '', active: true });
+    const [updatingUser, setUpdatingUser] = useState(false);
+
+    // Add user modal
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+
     useEffect(() => {
         fetchSettings();
     }, []);
@@ -99,11 +108,11 @@ export default function SettingsPage() {
         setMessage(null);
         try {
             await api.updateSettings({
-                googleAds,
-                metaAds,
-                openai,
-                clickCease,
-                ga4,
+                googleAds: { ...googleAds, connected: false },
+                metaAds: { ...metaAds, connected: false },
+                openai: { ...openai, connected: false },
+                clickCease: { ...clickCease, connected: false },
+                ga4: { ...ga4, connected: false },
                 branding,
             });
             setMessage({ type: 'success', text: 'Settings saved successfully!' });
@@ -128,7 +137,6 @@ export default function SettingsPage() {
         try {
             await api.addUser(newUser);
             setNewUser({ name: '', email: '', password: '', role: 'viewer', phone: '', department: '' });
-            fetchUsers();
             setMessage({ type: 'success', text: 'User added successfully!' });
             fetchSettings();
         } catch (error) {
@@ -146,6 +154,32 @@ export default function SettingsPage() {
             fetchSettings();
         } catch (error) {
             setMessage({ type: 'error', text: 'Failed to delete user' });
+        }
+    };
+
+    const handleEditUser = (user: UserData) => {
+        setEditingUser(user);
+        setEditForm({
+            name: user.name,
+            email: user.email,
+            role: user.role as 'viewer' | 'admin' | 'manager',
+            department: user.department || '',
+            active: user.active !== false
+        });
+    };
+
+    const handleUpdateUser = async () => {
+        if (!editingUser) return;
+        setUpdatingUser(true);
+        try {
+            await api.updateUser(editingUser._id, editForm);
+            setMessage({ type: 'success', text: 'User updated successfully!' });
+            setEditingUser(null);
+            fetchSettings();
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Failed to update user' });
+        } finally {
+            setUpdatingUser(false);
         }
     };
 
@@ -482,53 +516,14 @@ export default function SettingsPage() {
             {/* Users Tab */}
             {activeTab === 'users' && (
                 <div className="space-y-6">
-                    {/* Add User */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Plus size={18} className="text-emerald-500" />
-                                Add New User
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <input
-                                    type="text"
-                                    value={newUser.name}
-                                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                                    placeholder="Name *"
-                                    className="px-3 py-2 border rounded-lg text-sm"
-                                />
-                                <input
-                                    type="email"
-                                    value={newUser.email}
-                                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                                    placeholder="Email *"
-                                    className="px-3 py-2 border rounded-lg text-sm"
-                                />
-                                <input
-                                    type="password"
-                                    value={newUser.password}
-                                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                                    placeholder="Password *"
-                                    className="px-3 py-2 border rounded-lg text-sm"
-                                />
-                                <select
-                                    value={newUser.role}
-                                    onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                                    className="px-3 py-2 border rounded-lg text-sm bg-white"
-                                >
-                                    <option value="viewer">Viewer</option>
-                                    <option value="manager">Manager</option>
-                                    <option value="admin">Admin</option>
-                                </select>
-                                <Button onClick={handleAddUser} disabled={addingUser} className="bg-emerald-600 hover:bg-emerald-700">
-                                    {addingUser ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                                    <span className="ml-2">Add User</span>
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {/* Add User Button */}
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-lg font-semibold">User Management</h2>
+                        <Button onClick={() => setShowAddModal(true)} className="bg-emerald-600 hover:bg-emerald-700">
+                            <Plus size={16} className="mr-2" />
+                            Add User
+                        </Button>
+                    </div>
 
                     {/* Users List */}
                     <Card>
@@ -560,9 +555,12 @@ export default function SettingsPage() {
                                                 }>
                                                     {user.role}
                                                 </Badge>
-                                                <Badge variant="outline" className={user.active ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}>
-                                                    {user.active ? 'Active' : 'Inactive'}
+                                                <Badge variant="outline" className={user.active !== false ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}>
+                                                    {user.active !== false ? 'Active' : 'Inactive'}
                                                 </Badge>
+                                                <Button variant="ghost" size="icon-sm" onClick={() => handleEditUser(user)} className="text-blue-500 hover:text-blue-700 hover:bg-blue-50">
+                                                    <Edit2 size={16} />
+                                                </Button>
                                                 <Button variant="ghost" size="icon-sm" onClick={() => handleDeleteUser(user._id)} className="text-red-500 hover:text-red-700 hover:bg-red-50">
                                                     <Trash2 size={16} />
                                                 </Button>
@@ -579,6 +577,174 @@ export default function SettingsPage() {
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* Edit User Modal */}
+                    {editingUser && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <Card className="w-full max-w-md">
+                                <CardHeader>
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <Edit2 size={18} className="text-blue-500" />
+                                        Edit User
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div>
+                                        <label className="text-sm font-medium">Name</label>
+                                        <input
+                                            type="text"
+                                            value={editForm.name}
+                                            onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                            className="w-full mt-1 px-3 py-2 border rounded-lg"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium">Email</label>
+                                        <input
+                                            type="email"
+                                            value={editForm.email}
+                                            onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                            className="w-full mt-1 px-3 py-2 border rounded-lg"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-sm font-medium">Role</label>
+                                            <select
+                                                value={editForm.role}
+                                                onChange={(e) => setEditForm({ ...editForm, role: e.target.value as 'viewer' | 'admin' | 'manager' })}
+                                                className="w-full mt-1 px-3 py-2 border rounded-lg bg-white"
+                                            >
+                                                <option value="viewer">Viewer</option>
+                                                <option value="manager">Manager</option>
+                                                <option value="admin">Admin</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium">Department</label>
+                                            <input
+                                                type="text"
+                                                value={editForm.department}
+                                                onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                                                className="w-full mt-1 px-3 py-2 border rounded-lg"
+                                                placeholder="e.g. Marketing"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <label className="text-sm font-medium">Active Status</label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditForm({ ...editForm, active: !editForm.active })}
+                                            className={`w-12 h-6 rounded-full transition-colors ${editForm.active ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                                        >
+                                            <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${editForm.active ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                                        </button>
+                                        <span className={`text-sm ${editForm.active ? 'text-emerald-600' : 'text-slate-500'}`}>
+                                            {editForm.active ? 'Active' : 'Inactive'}
+                                        </span>
+                                    </div>
+                                    <div className="flex gap-3 pt-4 border-t">
+                                        <Button variant="outline" onClick={() => setEditingUser(null)} className="flex-1">
+                                            Cancel
+                                        </Button>
+                                        <Button onClick={handleUpdateUser} disabled={updatingUser} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                                            {updatingUser ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Save size={16} className="mr-2" />}
+                                            Save Changes
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
+
+                    {/* Add User Modal */}
+                    {showAddModal && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <Card className="w-full max-w-md">
+                                <CardHeader>
+                                    <CardTitle className="text-lg flex items-center gap-2">
+                                        <Plus size={18} className="text-emerald-500" />
+                                        Add New User
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div>
+                                        <label className="text-sm font-medium">Name *</label>
+                                        <input
+                                            type="text"
+                                            value={newUser.name}
+                                            onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                                            className="w-full mt-1 px-3 py-2 border rounded-lg"
+                                            placeholder="Full name"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium">Email *</label>
+                                        <input
+                                            type="email"
+                                            value={newUser.email}
+                                            onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                                            className="w-full mt-1 px-3 py-2 border rounded-lg"
+                                            placeholder="email@example.com"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium">Password * (min 6 chars)</label>
+                                        <div className="relative mt-1">
+                                            <input
+                                                type={showNewPassword ? 'text' : 'password'}
+                                                value={newUser.password}
+                                                onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                                                className="w-full px-3 py-2 pr-10 border rounded-lg"
+                                                placeholder="••••••••"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                            >
+                                                {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-sm font-medium">Role</label>
+                                            <select
+                                                value={newUser.role}
+                                                onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                                                className="w-full mt-1 px-3 py-2 border rounded-lg bg-white"
+                                            >
+                                                <option value="viewer">Viewer</option>
+                                                <option value="manager">Manager</option>
+                                                <option value="admin">Admin</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium">Department</label>
+                                            <input
+                                                type="text"
+                                                value={newUser.department}
+                                                onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
+                                                className="w-full mt-1 px-3 py-2 border rounded-lg"
+                                                placeholder="e.g. Marketing"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-3 pt-4 border-t">
+                                        <Button variant="outline" onClick={() => { setShowAddModal(false); setNewUser({ name: '', email: '', password: '', role: 'viewer', phone: '', department: '' }); }} className="flex-1">
+                                            Cancel
+                                        </Button>
+                                        <Button onClick={() => { handleAddUser(); setShowAddModal(false); }} disabled={addingUser || !newUser.name || !newUser.email || !newUser.password} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+                                            {addingUser ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Plus size={16} className="mr-2" />}
+                                            Add User
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

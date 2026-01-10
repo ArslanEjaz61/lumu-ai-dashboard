@@ -1,9 +1,13 @@
 const Settings = require('../models/Settings');
+const User = require('../models/User');
 
 // Get all settings (masked secrets)
 exports.getSettings = async (req, res) => {
     try {
         const settings = await Settings.getSettings();
+
+        // Fetch actual users from User collection
+        const users = await User.find().select('-password').sort({ createdAt: -1 });
 
         // Mask sensitive data
         const masked = {
@@ -38,7 +42,7 @@ exports.getSettings = async (req, res) => {
             },
             n8n: settings.n8n,
             branding: settings.branding || { dashboardName: 'LUMU', tagline: 'AI Dashboard', logoUrl: '', primaryColor: '#10b981' },
-            users: settings.users || [],
+            users: users, // Use actual users from User collection
             currency: settings.currency,
             syncInterval: settings.syncInterval,
             dataRetention: settings.dataRetention,

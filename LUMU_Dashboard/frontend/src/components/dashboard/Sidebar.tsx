@@ -12,6 +12,7 @@ import {
     Settings,
     Menu,
     X,
+    Sparkles,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ import { api, BrandingData } from "@/lib/api";
 
 const navItems = [
     { href: "/", label: "Overview", icon: LayoutDashboard },
+    { href: "/studio", label: "Creative Studio", icon: Sparkles },
     { href: "/campaigns", label: "Campaigns", icon: Megaphone },
     { href: "/audience", label: "Audience", icon: Users },
     { href: "/geo", label: "Geo Analytics", icon: MapPin },
