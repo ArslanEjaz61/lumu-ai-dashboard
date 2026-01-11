@@ -13,6 +13,11 @@ import {
     Menu,
     X,
     Sparkles,
+    Rocket,
+    DollarSign,
+    Cloud,
+    Target,
+    RefreshCw,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -22,8 +27,13 @@ const navItems = [
     { href: "/", label: "Overview", icon: LayoutDashboard },
     { href: "/studio", label: "Creative Studio", icon: Sparkles },
     { href: "/campaigns", label: "Campaigns", icon: Megaphone },
+    { href: "/publish", label: "Publish Ads", icon: Rocket },
+    { href: "/budget", label: "Budget AI", icon: DollarSign },
     { href: "/audience", label: "Audience", icon: Users },
     { href: "/geo", label: "Geo Analytics", icon: MapPin },
+    { href: "/triggers", label: "Weather Triggers", icon: Cloud },
+    { href: "/cro", label: "CRO & Funnel", icon: Target },
+    { href: "/retargeting", label: "Retargeting", icon: RefreshCw },
     { href: "/fraud", label: "Fraud Report", icon: ShieldAlert },
     { href: "/insights", label: "AI Insights", icon: Lightbulb },
 ];
@@ -72,7 +82,7 @@ export function Sidebar() {
             {/* Sidebar */}
             <aside
                 className={cn(
-                    "fixed left-0 top-0 z-40 h-screen w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white transition-transform duration-300",
+                    "fixed left-0 top-0 z-40 h-screen w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white transition-transform duration-300 flex flex-col",
                     "lg:translate-x-0",
                     isOpen ? "translate-x-0" : "-translate-x-full"
                 )}
@@ -95,8 +105,8 @@ export function Sidebar() {
                     </div>
                 </div>
 
-                {/* Navigation */}
-                <nav className="p-4 space-y-1">
+                {/* Navigation - Scrollable */}
+                <nav className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
                     {navItems.map((item) => {
                         const isActive = pathname === item.href;
                         const Icon = item.icon;
@@ -120,8 +130,8 @@ export function Sidebar() {
                     })}
                 </nav>
 
-                {/* Bottom Section */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700">
+                {/* Bottom Section - Fixed at bottom */}
+                <div className="shrink-0 p-4 border-t border-slate-700 bg-slate-900">
                     <Link
                         href="/settings"
                         className={cn(

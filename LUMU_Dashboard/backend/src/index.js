@@ -17,6 +17,11 @@ const usersRoutes = require('./routes/users');
 const campaignManagerRoutes = require('./routes/campaignManager');
 const creativesRoutes = require('./routes/creatives');
 const uploadRoutes = require('./routes/upload');
+const publishRoutes = require('./routes/publish');
+const budgetRoutes = require('./routes/budget');
+const triggersRoutes = require('./routes/triggers');
+const croRoutes = require('./routes/cro');
+const retargetingRoutes = require('./routes/retargeting');
 
 const app = express();
 
@@ -49,6 +54,11 @@ app.use('/api/users', usersRoutes);
 app.use('/api/campaign-manager', campaignManagerRoutes);
 app.use('/api/creatives', creativesRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/publish', publishRoutes);
+app.use('/api/budget', budgetRoutes);
+app.use('/api/triggers', triggersRoutes);
+app.use('/api/cro', croRoutes);
+app.use('/api/retargeting', retargetingRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

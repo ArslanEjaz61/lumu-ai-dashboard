@@ -299,6 +299,14 @@ export default function SettingsPage() {
                             <InputField label="Client ID" value={googleAds.clientId} onChange={(v) => setGoogleAds({ ...googleAds, clientId: v })} placeholder="OAuth Client ID" />
                             <InputField label="Client Secret" value={googleAds.clientSecret} onChange={(v) => setGoogleAds({ ...googleAds, clientSecret: v })} secretKey="googleSecret" placeholder="OAuth Client Secret" />
                             <InputField label="Refresh Token" value={googleAds.refreshToken} onChange={(v) => setGoogleAds({ ...googleAds, refreshToken: v })} secretKey="googleRefresh" placeholder="OAuth Refresh Token" />
+                            <div className="flex gap-2 pt-3 border-t mt-3">
+                                <Button variant="outline" size="sm" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">
+                                    <CheckCircle size={14} className="mr-1" /> Test Connection
+                                </Button>
+                                <Button size="sm" onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 ml-auto">
+                                    <Save size={14} className="mr-1" /> Save
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -322,6 +330,14 @@ export default function SettingsPage() {
                             <InputField label="App ID" value={metaAds.appId} onChange={(v) => setMetaAds({ ...metaAds, appId: v })} placeholder="Meta App ID" />
                             <InputField label="App Secret" value={metaAds.appSecret} onChange={(v) => setMetaAds({ ...metaAds, appSecret: v })} secretKey="metaSecret" placeholder="Meta App Secret" />
                             <InputField label="Access Token" value={metaAds.accessToken} onChange={(v) => setMetaAds({ ...metaAds, accessToken: v })} secretKey="metaToken" placeholder="Long-lived Access Token" />
+                            <div className="flex gap-2 pt-3 border-t mt-3">
+                                <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50">
+                                    <CheckCircle size={14} className="mr-1" /> Test Connection
+                                </Button>
+                                <Button size="sm" onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700 ml-auto">
+                                    <Save size={14} className="mr-1" /> Save
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -343,6 +359,14 @@ export default function SettingsPage() {
                         <CardContent className="space-y-3">
                             <InputField label="API Key" value={openai.apiKey} onChange={(v) => setOpenai({ apiKey: v })} secretKey="openaiKey" placeholder="sk-xxxxxxxxxxxxxxxx" />
                             <p className="text-xs text-slate-500">Used for AI campaign optimization and smart recommendations.</p>
+                            <div className="flex gap-2 pt-3 border-t mt-3">
+                                <Button variant="outline" size="sm" className="text-purple-600 border-purple-200 hover:bg-purple-50">
+                                    <CheckCircle size={14} className="mr-1" /> Test Connection
+                                </Button>
+                                <Button size="sm" onClick={handleSave} disabled={saving} className="bg-purple-600 hover:bg-purple-700 ml-auto">
+                                    <Save size={14} className="mr-1" /> Save
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -364,6 +388,14 @@ export default function SettingsPage() {
                         <CardContent className="space-y-3">
                             <InputField label="Property ID" value={ga4.propertyId} onChange={(v) => setGa4({ ...ga4, propertyId: v })} placeholder="xxxxxxxxx" />
                             <InputField label="Access Token" value={ga4.accessToken} onChange={(v) => setGa4({ ...ga4, accessToken: v })} secretKey="ga4Token" placeholder="OAuth Access Token" />
+                            <div className="flex gap-2 pt-3 border-t mt-3">
+                                <Button variant="outline" size="sm" className="text-orange-600 border-orange-200 hover:bg-orange-50">
+                                    <CheckCircle size={14} className="mr-1" /> Test Connection
+                                </Button>
+                                <Button size="sm" onClick={handleSave} disabled={saving} className="bg-orange-600 hover:bg-orange-700 ml-auto">
+                                    <Save size={14} className="mr-1" /> Save
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -385,6 +417,14 @@ export default function SettingsPage() {
                         <CardContent className="space-y-3">
                             <InputField label="API Key" value={clickCease.apiKey} onChange={(v) => setClickCease({ ...clickCease, apiKey: v })} secretKey="ccKey" placeholder="Your ClickCease API key" />
                             <InputField label="Domain" value={clickCease.domain} onChange={(v) => setClickCease({ ...clickCease, domain: v })} placeholder="yourdomain.com" />
+                            <div className="flex gap-2 pt-3 border-t mt-3">
+                                <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50">
+                                    <CheckCircle size={14} className="mr-1" /> Test Connection
+                                </Button>
+                                <Button size="sm" onClick={handleSave} disabled={saving} className="bg-red-600 hover:bg-red-700 ml-auto">
+                                    <Save size={14} className="mr-1" /> Save
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 

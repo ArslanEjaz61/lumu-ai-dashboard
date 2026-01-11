@@ -1,0 +1,341 @@
+{
+    "name": "LUMU Retargeting Automation Agent",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "lumu-cart-abandon",
+                "options": {}
+            },
+            "id": "webhook-cart-abandon",
+            "name": "Cart Abandon Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                220,
+                200
+            ],
+            "webhookId": "lumu-cart-abandon"
+        },
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hoursInterval": 1
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-check",
+            "name": "Check Every Hour",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                220,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/retargeting/flows",
+                "options": {}
+            },
+            "id": "fetch-flows",
+            "name": "Fetch Active Flows",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                480,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/retargeting/activity",
+                "options": {}
+            },
+            "id": "fetch-activity",
+            "name": "Fetch Recent Activity",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                480,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const flows = $('Fetch Active Flows').first().json.flows || [];\nconst activity = $('Fetch Recent Activity').first().json.activity || [];\n\nconst actions = [];\n\n// Check cart abandonment flow\nconst cartFlow = flows.find(f => f.name === 'Cart Abandonment' && f.status === 'active');\nif (cartFlow && cartFlow.audience > 100) {\n  // Simulate users who need follow-up\n  const usersNeedingAction = Math.floor(cartFlow.audience * 0.1);\n  \n  if (usersNeedingAction > 0) {\n    actions.push({\n      flow: 'Cart Abandonment',\n      action: 'send_email',\n      count: usersNeedingAction,\n      template: 'cart_reminder_1h',\n      subject: '🛒 You left something behind!',\n      message: `Sending cart reminder emails to ${usersNeedingAction} users`\n    });\n  }\n}\n\n// Check viewed-not-purchased flow\nconst viewedFlow = flows.find(f => f.name === 'Viewed Not Purchased' && f.status === 'active');\nif (viewedFlow && viewedFlow.audience > 50) {\n  const usersNeedingAction = Math.floor(viewedFlow.audience * 0.05);\n  \n  if (usersNeedingAction > 0) {\n    actions.push({\n      flow: 'Viewed Not Purchased',\n      action: 'serve_ad',\n      count: usersNeedingAction,\n      platform: 'Facebook',\n      message: `Serving retargeting ads to ${usersNeedingAction} users who viewed products`\n    });\n  }\n}\n\n// Process win-back for dormant users\nconst winBackFlow = flows.find(f => f.name === 'Win Back Campaign' && f.status === 'active');\nif (winBackFlow && winBackFlow.audience > 200) {\n  actions.push({\n    flow: 'Win Back',\n    action: 'special_offer',\n    count: Math.floor(winBackFlow.audience * 0.15),\n    discount: '20%',\n    message: `Sending special 20% discount to win back dormant customers`\n  });\n}\n\n// Calculate conversions from recent activity\nconst conversions = activity.filter(a => a.status === 'converted').length;\nconst totalActions = activity.length;\nconst conversionRate = totalActions > 0 ? ((conversions / totalActions) * 100).toFixed(1) : 0;\n\nactions.push({\n  flow: 'Summary',\n  action: 'report',\n  conversionRate: conversionRate,\n  totalTriggers: totalActions,\n  conversions: conversions,\n  message: `Retargeting performance: ${conversionRate}% conversion rate`\n});\n\nreturn actions.map(a => ({ json: a }));"
+            },
+            "id": "process-retargeting",
+            "name": "Process Retargeting Actions",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                740,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "is-action",
+                            "leftValue": "={{ $json.action }}",
+                            "rightValue": "report",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEquals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "filter-actions",
+            "name": "Is Action?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                980,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "action-message",
+                            "name": "actionMessage",
+                            "value": "=🔄 LUMU RETARGETING AGENT\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🎯 Flow: {{ $json.flow }}\n⚡ Action: {{ $json.action.replace('_', ' ').toUpperCase() }}\n👥 Users: {{ $json.count }}\n\n💬 {{ $json.message }}\n\n{{ $json.template ? '📧 Template: ' + $json.template : '' }}\n{{ $json.platform ? '📱 Platform: ' + $json.platform : '' }}\n{{ $json.discount ? '🎁 Discount: ' + $json.discount : '' }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLUMU AI Dashboard",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "format-action",
+            "name": "Format Action Message",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                1220,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+                "text": "={{ $json.actionMessage }}",
+                "additionalFields": {}
+            },
+            "id": "send-telegram-action",
+            "name": "Notify Action Taken",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                1460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "report-message",
+                            "name": "reportMessage",
+                            "value": "=📊 LUMU RETARGETING SUMMARY\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📈 Conversion Rate: {{ $json.conversionRate }}%\n🎯 Total Triggers: {{ $json.totalTriggers }}\n✅ Conversions: {{ $json.conversions }}\n\n{{ $json.message }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nHourly Update • LUMU AI Dashboard",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "format-report",
+            "name": "Format Report",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                1220,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/insights",
+                "method": "POST",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "type",
+                            "value": "retargeting_report"
+                        },
+                        {
+                            "name": "conversionRate",
+                            "value": "={{ $json.conversionRate }}"
+                        },
+                        {
+                            "name": "totalTriggers",
+                            "value": "={{ $json.totalTriggers }}"
+                        },
+                        {
+                            "name": "conversions",
+                            "value": "={{ $json.conversions }}"
+                        },
+                        {
+                            "name": "source",
+                            "value": "retargeting-agent"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "log-report",
+            "name": "Log Report",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1460,
+                500
+            ]
+        }
+    ],
+    "connections": {
+        "Cart Abandon Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Active Flows",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Every Hour": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Active Flows",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Fetch Recent Activity",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Active Flows": {
+            "main": [
+                [
+                    {
+                        "node": "Process Retargeting Actions",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Recent Activity": {
+            "main": [
+                [
+                    {
+                        "node": "Process Retargeting Actions",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Process Retargeting Actions": {
+            "main": [
+                [
+                    {
+                        "node": "Is Action?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Is Action?": {
+            "main": [
+                [
+                    {
+                        "node": "Format Action Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Format Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Action Message": {
+            "main": [
+                [
+                    {
+                        "node": "Notify Action Taken",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Report": {
+            "main": [
+                [
+                    {
+                        "node": "Log Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "name": "LUMU",
+            "createdAt": "2026-01-10T00:00:00.000Z",
+            "updatedAt": "2026-01-10T00:00:00.000Z"
+        },
+        {
+            "name": "AI Agent",
+            "createdAt": "2026-01-10T00:00:00.000Z",
+            "updatedAt": "2026-01-10T00:00:00.000Z"
+        },
+        {
+            "name": "Retargeting",
+            "createdAt": "2026-01-10T00:00:00.000Z",
+            "updatedAt": "2026-01-10T00:00:00.000Z"
+        }
+    ],
+    "triggerCount": 2,
+    "updatedAt": "2026-01-10T00:00:00.000Z",
+    "versionId": "1"
+}

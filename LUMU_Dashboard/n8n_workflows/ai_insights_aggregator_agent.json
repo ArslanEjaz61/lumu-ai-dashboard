@@ -1,0 +1,333 @@
+{
+    "name": "LUMU AI Insights Aggregator Agent",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hoursInterval": 24
+                        }
+                    ]
+                }
+            },
+            "id": "daily-trigger",
+            "name": "Daily Report",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                220,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/campaigns/all",
+                "options": {}
+            },
+            "id": "fetch-campaigns",
+            "name": "Fetch Campaigns",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/budget/allocation",
+                "options": {}
+            },
+            "id": "fetch-budget",
+            "name": "Fetch Budget",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/cro/funnel",
+                "options": {}
+            },
+            "id": "fetch-cro",
+            "name": "Fetch CRO Data",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                420
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/retargeting/flows",
+                "options": {}
+            },
+            "id": "fetch-retargeting",
+            "name": "Fetch Retargeting",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                540
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/fraud/summary",
+                "options": {}
+            },
+            "id": "fetch-fraud",
+            "name": "Fetch Fraud Data",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                460,
+                660
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const campaigns = $('Fetch Campaigns').first().json || {};\nconst budget = $('Fetch Budget').first().json || {};\nconst cro = $('Fetch CRO Data').first().json || {};\nconst retargeting = $('Fetch Retargeting').first().json || {};\nconst fraud = $('Fetch Fraud Data').first().json || {};\n\n// Calculate campaign metrics\nlet totalSpend = 0, totalConversions = 0, totalImpressions = 0;\nlet bestCampaign = null, worstCampaign = null;\n\nconst allCampaigns = [...(campaigns.meta || []), ...(campaigns.google || [])];\nfor (const c of allCampaigns) {\n  totalSpend += c.spend || 0;\n  totalConversions += c.conversions || 0;\n  totalImpressions += c.impressions || 0;\n  \n  if (!bestCampaign || c.roas > bestCampaign.roas) bestCampaign = c;\n  if (!worstCampaign || c.roas < worstCampaign.roas) worstCampaign = c;\n}\n\n// Calculate overall ROAS\nconst overallRoas = totalSpend > 0 ? ((totalConversions * 4500) / totalSpend).toFixed(2) : 0;\n\n// Budget insights\nconst budgetUsed = budget.totalSpent || 0;\nconst budgetTotal = budget.totalBudget || 100000;\nconst budgetPercentage = ((budgetUsed / budgetTotal) * 100).toFixed(1);\n\n// CRO insights\nconst conversionRate = cro.metrics?.conversionRate || 2.5;\nconst cartAbandonment = cro.metrics?.cartAbandonment || 58;\n\n// Retargeting insights\nconst flows = retargeting.flows || [];\nconst activeFlows = flows.filter(f => f.status === 'active').length;\nconst totalRecovered = flows.reduce((sum, f) => sum + (f.revenue || 0), 0);\n\n// Fraud insights  \nconst moneySaved = fraud.moneySaved || 45000;\nconst invalidClicks = fraud.invalidClicks || 1250;\n\n// Generate insights array\nconst insights = [];\n\n// Top insight\nif (bestCampaign) {\n  insights.push({\n    type: 'success',\n    title: '🏆 Top Performer',\n    message: `${bestCampaign.name} achieving ${bestCampaign.roas}x ROAS`\n  });\n}\n\n// Warning insight\nif (worstCampaign && worstCampaign.roas < 2) {\n  insights.push({\n    type: 'warning',\n    title: '⚠️ Needs Attention',\n    message: `${worstCampaign.name} has low ROAS of ${worstCampaign.roas}x`\n  });\n}\n\n// Budget insight\nif (budgetPercentage > 80) {\n  insights.push({\n    type: 'alert',\n    title: '💰 Budget Alert',\n    message: `${budgetPercentage}% budget used - consider reallocating`\n  });\n}\n\n// CRO insight\nif (cartAbandonment > 55) {\n  insights.push({\n    type: 'opportunity',\n    title: '🛒 Conversion Opportunity',\n    message: `${cartAbandonment}% cart abandonment - optimize checkout flow`\n  });\n}\n\nconst report = {\n  date: new Date().toISOString().split('T')[0],\n  summary: {\n    totalSpend,\n    totalConversions,\n    overallRoas,\n    budgetPercentage,\n    conversionRate,\n    activeRetargetingFlows: activeFlows,\n    revenueRecovered: totalRecovered,\n    fraudSaved: moneySaved\n  },\n  insights,\n  bestCampaign: bestCampaign?.name || 'N/A',\n  worstCampaign: worstCampaign?.name || 'N/A'\n};\n\nreturn [{ json: report }];"
+            },
+            "id": "aggregate-insights",
+            "name": "AI Aggregate Insights",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                740,
+                420
+            ]
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "daily-report",
+                            "name": "dailyReport",
+                            "value": "=📊 LUMU DAILY AI REPORT\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📅 {{ $json.date }}\n\n📈 PERFORMANCE SUMMARY\n━━━━━━━━━━━━━━━━━━━━━━━\n💸 Total Spend: PKR {{ $json.summary.totalSpend.toLocaleString() }}\n🎯 Conversions: {{ $json.summary.totalConversions }}\n📊 Overall ROAS: {{ $json.summary.overallRoas }}x\n💰 Budget Used: {{ $json.summary.budgetPercentage }}%\n\n🛒 CRO METRICS\n━━━━━━━━━━━━━━━━━━━━━━━\n📈 Conversion Rate: {{ $json.summary.conversionRate }}%\n🔄 Active Retargeting Flows: {{ $json.summary.activeRetargetingFlows }}\n💵 Revenue Recovered: PKR {{ $json.summary.revenueRecovered.toLocaleString() }}\n\n🛡️ FRAUD PROTECTION\n━━━━━━━━━━━━━━━━━━━━━━━\n💰 Money Saved: PKR {{ $json.summary.fraudSaved.toLocaleString() }}\n\n🏆 TOP PERFORMER: {{ $json.bestCampaign }}\n⚠️ NEEDS ATTENTION: {{ $json.worstCampaign }}\n\n💡 AI INSIGHTS\n━━━━━━━━━━━━━━━━━━━━━━━\n{{ $json.insights.map(i => i.title + ': ' + i.message).join('\\n') }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLUMU AI Dashboard • Daily Report",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "format-report",
+            "name": "Format Daily Report",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                1000,
+                420
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+                "text": "={{ $json.dailyReport }}",
+                "additionalFields": {}
+            },
+            "id": "send-telegram",
+            "name": "Send Daily Report",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                1260,
+                320
+            ]
+        },
+        {
+            "parameters": {
+                "channel": "={{ $env.SLACK_REPORT_CHANNEL || '#daily-reports' }}",
+                "text": "={{ $json.dailyReport }}",
+                "otherOptions": {}
+            },
+            "id": "send-slack",
+            "name": "Send to Slack",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2.2,
+            "position": [
+                1260,
+                520
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": {
+                    "__rl": true,
+                    "value": "={{ $env.REPORTS_SHEET_ID }}",
+                    "mode": "id"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "Daily Reports",
+                    "mode": "name"
+                },
+                "columns": {
+                    "mappingMode": "autoMapInputData",
+                    "value": {}
+                },
+                "options": {}
+            },
+            "id": "log-sheet",
+            "name": "Log to Google Sheets",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.5,
+            "position": [
+                1260,
+                720
+            ]
+        }
+    ],
+    "connections": {
+        "Daily Report": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Campaigns",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Fetch Budget",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Fetch CRO Data",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Fetch Retargeting",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Fetch Fraud Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Campaigns": {
+            "main": [
+                [
+                    {
+                        "node": "AI Aggregate Insights",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Budget": {
+            "main": [
+                [
+                    {
+                        "node": "AI Aggregate Insights",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch CRO Data": {
+            "main": [
+                [
+                    {
+                        "node": "AI Aggregate Insights",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Retargeting": {
+            "main": [
+                [
+                    {
+                        "node": "AI Aggregate Insights",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Fraud Data": {
+            "main": [
+                [
+                    {
+                        "node": "AI Aggregate Insights",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Aggregate Insights": {
+            "main": [
+                [
+                    {
+                        "node": "Format Daily Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Daily Report": {
+            "main": [
+                [
+                    {
+                        "node": "Send Daily Report",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Send to Slack",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Log to Google Sheets",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "name": "LUMU",
+            "createdAt": "2026-01-10T00:00:00.000Z",
+            "updatedAt": "2026-01-10T00:00:00.000Z"
+        },
+        {
+            "name": "AI Agent",
+            "createdAt": "2026-01-10T00:00:00.000Z",
+            "updatedAt": "2026-01-10T00:00:00.000Z"
+        },
+        {
+            "name": "Insights",
+            "createdAt": "2026-01-10T00:00:00.000Z",
+            "updatedAt": "2026-01-10T00:00:00.000Z"
+        }
+    ],
+    "triggerCount": 1,
+    "updatedAt": "2026-01-10T00:00:00.000Z",
+    "versionId": "1"
+}
