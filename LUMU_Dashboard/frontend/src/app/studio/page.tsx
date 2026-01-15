@@ -874,22 +874,28 @@ export default function CreativeStudioPage() {
                             {/* Common: Platforms */}
                             <div>
                                 <label className="text-sm font-medium">Platforms</label>
-                                <div className="flex gap-3 mt-2">
-                                    {['facebook', 'instagram', 'google'].map((platform) => (
-                                        <label key={platform} className="flex items-center gap-2 cursor-pointer">
+                                <div className="flex flex-wrap gap-3 mt-2">
+                                    {[
+                                        { id: 'facebook', label: 'Facebook', color: '#1877F2' },
+                                        { id: 'instagram', label: 'Instagram', color: '#E4405F' },
+                                        { id: 'google', label: 'Google', color: '#4285F4' },
+                                        { id: 'youtube', label: 'YouTube', color: '#FF0000' },
+                                        { id: 'tiktok', label: 'TikTok', color: '#000000' }
+                                    ].map((platform) => (
+                                        <label key={platform.id} className="flex items-center gap-2 cursor-pointer">
                                             <input
                                                 type="checkbox"
-                                                checked={formData.platforms.includes(platform)}
+                                                checked={formData.platforms.includes(platform.id)}
                                                 onChange={(e) => {
                                                     if (e.target.checked) {
-                                                        setFormData({ ...formData, platforms: [...formData.platforms, platform] });
+                                                        setFormData({ ...formData, platforms: [...formData.platforms, platform.id] });
                                                     } else {
-                                                        setFormData({ ...formData, platforms: formData.platforms.filter(p => p !== platform) });
+                                                        setFormData({ ...formData, platforms: formData.platforms.filter(p => p !== platform.id) });
                                                     }
                                                 }}
                                                 className="rounded"
                                             />
-                                            <span className="capitalize text-sm">{platform}</span>
+                                            <span className="text-sm" style={{ color: platform.color }}>{platform.label}</span>
                                         </label>
                                     ))}
                                 </div>

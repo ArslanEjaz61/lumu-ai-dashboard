@@ -78,7 +78,11 @@ export default function CampaignManagerPage() {
         ageMin: 18,
         ageMax: 45,
         gender: 'all',
-        interests: ''
+        interests: '',
+        // New fields for platform APIs
+        linkUrl: '',
+        adFormat: 'single_image',
+        bidStrategy: 'lowest_cost'
     });
 
     useEffect(() => {
@@ -120,6 +124,9 @@ export default function CampaignManagerPage() {
                         gender: formData.gender,
                         interests: formData.interests.split(',').map(i => i.trim()).filter(Boolean)
                     },
+                    linkUrl: formData.linkUrl,
+                    adFormat: formData.adFormat,
+                    bidStrategy: formData.bidStrategy,
                     status: 'draft'
                 })
             });
@@ -157,7 +164,10 @@ export default function CampaignManagerPage() {
                         ageRange: { min: formData.ageMin, max: formData.ageMax },
                         gender: formData.gender,
                         interests: formData.interests.split(',').map(i => i.trim()).filter(Boolean)
-                    }
+                    },
+                    linkUrl: formData.linkUrl,
+                    adFormat: formData.adFormat,
+                    bidStrategy: formData.bidStrategy
                 })
             });
             if (res.ok) {
@@ -210,7 +220,10 @@ export default function CampaignManagerPage() {
             ageMin: campaign.targeting?.ageRange?.min || 18,
             ageMax: campaign.targeting?.ageRange?.max || 45,
             gender: campaign.targeting?.gender || 'all',
-            interests: campaign.targeting?.interests?.join(', ') || ''
+            interests: campaign.targeting?.interests?.join(', ') || '',
+            linkUrl: (campaign as any).linkUrl || '',
+            adFormat: (campaign as any).adFormat || 'single_image',
+            bidStrategy: (campaign as any).bidStrategy || 'lowest_cost'
         });
         setShowCreateModal(true);
     };
@@ -227,7 +240,10 @@ export default function CampaignManagerPage() {
             ageMin: 18,
             ageMax: 45,
             gender: 'all',
-            interests: ''
+            interests: '',
+            linkUrl: '',
+            adFormat: 'single_image',
+            bidStrategy: 'lowest_cost'
         });
     };
 
@@ -349,8 +365,8 @@ export default function CampaignManagerPage() {
                         key={tab}
                         onClick={() => setActiveTab(tab as typeof activeTab)}
                         className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px capitalize ${activeTab === tab
-                                ? 'border-emerald-500 text-emerald-600'
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
+                            ? 'border-emerald-500 text-emerald-600'
+                            : 'border-transparent text-slate-500 hover:text-slate-700'
                             }`}
                     >
                         {tab} ({tab === 'all' ? campaigns.length : campaigns.filter(c => c.status === tab).length})
@@ -521,8 +537,8 @@ export default function CampaignManagerPage() {
                                             type="button"
                                             onClick={() => setFormData({ ...formData, objective: obj.value })}
                                             className={`p-4 border-2 rounded-xl text-left transition-all ${formData.objective === obj.value
-                                                    ? 'border-emerald-500 bg-emerald-50'
-                                                    : 'border-slate-200 hover:border-slate-300'
+                                                ? 'border-emerald-500 bg-emerald-50'
+                                                : 'border-slate-200 hover:border-slate-300'
                                                 }`}
                                         >
                                             <obj.icon size={24} className={formData.objective === obj.value ? 'text-emerald-600' : 'text-slate-400'} />
@@ -561,11 +577,13 @@ export default function CampaignManagerPage() {
                             {/* Platforms */}
                             <div>
                                 <label className="text-sm font-medium">Platforms</label>
-                                <div className="flex gap-3 mt-2">
+                                <div className="flex flex-wrap gap-3 mt-2">
                                     {[
-                                        { id: 'facebook', icon: Facebook, color: 'blue' },
-                                        { id: 'instagram', icon: Instagram, color: 'pink' },
-                                        { id: 'google', icon: Globe, color: 'green' }
+                                        { id: 'facebook', icon: Facebook, color: '#1877F2' },
+                                        { id: 'instagram', icon: Instagram, color: '#E4405F' },
+                                        { id: 'google', icon: Globe, color: '#4285F4' },
+                                        { id: 'youtube', icon: Eye, color: '#FF0000' },
+                                        { id: 'tiktok', icon: Sparkles, color: '#000000' }
                                     ].map((platform) => (
                                         <label key={platform.id} className="flex items-center gap-2 cursor-pointer">
                                             <input
@@ -580,7 +598,7 @@ export default function CampaignManagerPage() {
                                                 }}
                                                 className="rounded"
                                             />
-                                            <platform.icon size={16} className={`text-${platform.color}-600`} />
+                                            <platform.icon size={16} style={{ color: platform.color }} />
                                             <span className="capitalize text-sm">{platform.id}</span>
                                         </label>
                                     ))}
@@ -633,6 +651,51 @@ export default function CampaignManagerPage() {
                                         placeholder="e.g., fashion, electronics, sports"
                                         className="w-full mt-1 p-2 border rounded-lg"
                                     />
+                                </div>
+                            </div>
+
+                            {/* Link URL (Required for ads) */}
+                            <div>
+                                <label className="text-sm font-medium">Destination URL *</label>
+                                <input
+                                    type="url"
+                                    value={formData.linkUrl}
+                                    onChange={(e) => setFormData({ ...formData, linkUrl: e.target.value })}
+                                    placeholder="https://yourwebsite.com/landing-page"
+                                    className="w-full mt-1 p-3 border rounded-lg"
+                                />
+                                <p className="text-xs text-slate-500 mt-1">Where users will go when they click your ad</p>
+                            </div>
+
+                            {/* Ad Format & Bid Strategy */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium">Ad Format</label>
+                                    <select
+                                        value={formData.adFormat}
+                                        onChange={(e) => setFormData({ ...formData, adFormat: e.target.value })}
+                                        className="w-full mt-1 p-2 border rounded-lg bg-white"
+                                    >
+                                        <option value="single_image">Single Image</option>
+                                        <option value="single_video">Single Video</option>
+                                        <option value="carousel">Carousel</option>
+                                        <option value="stories">Stories</option>
+                                        <option value="collection">Collection</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium">Bid Strategy</label>
+                                    <select
+                                        value={formData.bidStrategy}
+                                        onChange={(e) => setFormData({ ...formData, bidStrategy: e.target.value })}
+                                        className="w-full mt-1 p-2 border rounded-lg bg-white"
+                                    >
+                                        <option value="lowest_cost">Lowest Cost (Auto)</option>
+                                        <option value="cost_cap">Cost Cap</option>
+                                        <option value="bid_cap">Bid Cap</option>
+                                        <option value="maximize_conversions">Maximize Conversions</option>
+                                        <option value="maximize_clicks">Maximize Clicks</option>
+                                    </select>
                                 </div>
                             </div>
 

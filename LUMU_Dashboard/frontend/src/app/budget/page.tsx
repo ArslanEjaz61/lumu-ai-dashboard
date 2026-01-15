@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,77 +19,150 @@ import {
     BarChart3,
     Zap,
     Target,
-    Clock
+    Clock,
+    Loader2
 } from "lucide-react";
 import { PieChart as RechartPie, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 
-// Mock data
-const budgetAllocation = [
-    { name: 'Facebook', value: 35, color: '#1877F2', spent: 24500, remaining: 10500 },
-    { name: 'Instagram', value: 30, color: '#E4405F', spent: 21000, remaining: 9000 },
-    { name: 'Google Ads', value: 25, color: '#4285F4', spent: 17500, remaining: 7500 },
-    { name: 'YouTube', value: 10, color: '#FF0000', spent: 7000, remaining: 3000 },
-];
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-const hourlySpend = [
-    { hour: '6AM', spend: 500, conversions: 5 },
-    { hour: '9AM', spend: 1200, conversions: 12 },
-    { hour: '12PM', spend: 1500, conversions: 18 },
-    { hour: '3PM', spend: 1800, conversions: 22 },
-    { hour: '6PM', spend: 2500, conversions: 35 },
-    { hour: '9PM', spend: 3000, conversions: 45 },
-    { hour: '12AM', spend: 800, conversions: 8 },
-];
+interface BudgetAllocation {
+    platform: string;
+    percentage: number;
+    spent: number;
+    remaining: number;
+    color: string;
+}
 
-const aiRecommendations = [
-    {
-        id: 1,
-        type: 'increase',
-        platform: 'Instagram',
-        current: 30,
-        suggested: 40,
-        reason: 'Higher ROAS (4.2x) during evening hours',
-        impact: '+15% conversions expected',
-        priority: 'high'
-    },
-    {
-        id: 2,
-        type: 'decrease',
-        platform: 'Google Ads',
-        current: 25,
-        suggested: 18,
-        reason: 'CPC increased 25% this week',
-        impact: 'Save PKR 12,000/week',
-        priority: 'medium'
-    },
-    {
-        id: 3,
-        type: 'shift',
-        platform: 'Facebook',
-        current: 'Day',
-        suggested: 'Night (7-11 PM)',
-        reason: 'Peak engagement window',
-        impact: '+22% CTR improvement',
-        priority: 'high'
-    },
-];
+interface DayNightData {
+    day: { spend: number; conversions: number; cpc: number; roas: number };
+    night: { spend: number; conversions: number; cpc: number; roas: number };
+}
 
-const dayNightData = {
-    day: { spend: 45000, conversions: 120, cpc: 45, roas: 2.8 },
-    night: { spend: 55000, conversions: 230, cpc: 28, roas: 4.5 }
-};
+interface HourlySpend {
+    hour: string;
+    spend: number;
+    conversions: number;
+}
+
+interface Recommendation {
+    _id: string;
+    type: string;
+    platform: string;
+    current: any;
+    suggested: any;
+    reason: string;
+    impact: string;
+    priority: string;
+}
 
 export default function BudgetPage() {
+    const [loading, setLoading] = useState(true);
     const [totalBudget, setTotalBudget] = useState(100000);
+    const [totalSpent, setTotalSpent] = useState(0);
+    const [totalRemaining, setTotalRemaining] = useState(0);
+    const [avgRoas, setAvgRoas] = useState(0);
     const [autoOptimize, setAutoOptimize] = useState(true);
-    const [appliedRecommendations, setAppliedRecommendations] = useState<number[]>([]);
+    const [appliedRecommendations, setAppliedRecommendations] = useState<string[]>([]);
+    const [applyingId, setApplyingId] = useState<string | null>(null);
 
-    const applyRecommendation = (id: number) => {
-        setAppliedRecommendations(prev => [...prev, id]);
+    const [budgetAllocation, setBudgetAllocation] = useState<BudgetAllocation[]>([]);
+    const [hourlySpend, setHourlySpend] = useState<HourlySpend[]>([]);
+    const [dayNightData, setDayNightData] = useState<DayNightData>({
+        day: { spend: 0, conversions: 0, cpc: 0, roas: 0 },
+        night: { spend: 0, conversions: 0, cpc: 0, roas: 0 }
+    });
+    const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+
+    useEffect(() => {
+        fetchBudgetData();
+        fetchRecommendations();
+    }, []);
+
+    const fetchBudgetData = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch(`${API_URL}/budget/allocation`);
+            const data = await res.json();
+
+            setTotalBudget(data.totalBudget || 100000);
+            setTotalSpent(data.totalSpent || 0);
+            setTotalRemaining(data.totalRemaining || 0);
+            setAvgRoas(data.avgRoas || 0);
+
+            // Map allocation data with colors
+            const colorMap: { [key: string]: string } = {
+                'Facebook': '#1877F2',
+                'Instagram': '#E4405F',
+                'Google Ads': '#4285F4',
+                'YouTube': '#FF0000',
+                'TikTok': '#000000'
+            };
+
+            const allocations = (data.allocation || []).map((a: any) => ({
+                ...a,
+                name: a.platform,
+                value: a.percentage,
+                color: a.color || colorMap[a.platform] || '#6366f1'
+            }));
+
+            setBudgetAllocation(allocations);
+            setHourlySpend(data.hourlySpend || []);
+
+            if (data.dayNight) {
+                setDayNightData(data.dayNight);
+            }
+        } catch (error) {
+            console.error('Failed to fetch budget data:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const totalSpent = budgetAllocation.reduce((acc, p) => acc + p.spent, 0);
-    const totalRemaining = budgetAllocation.reduce((acc, p) => acc + p.remaining, 0);
+    const fetchRecommendations = async () => {
+        try {
+            const res = await fetch(`${API_URL}/budget/recommendations`);
+            const data = await res.json();
+            setRecommendations(data.recommendations || []);
+        } catch (error) {
+            console.error('Failed to fetch recommendations:', error);
+        }
+    };
+
+    const applyRecommendation = async (id: string) => {
+        setApplyingId(id);
+        try {
+            const res = await fetch(`${API_URL}/budget/apply-recommendation`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ recommendationId: id })
+            });
+
+            if (res.ok) {
+                setAppliedRecommendations(prev => [...prev, id]);
+                // Refresh data
+                fetchBudgetData();
+            }
+        } catch (error) {
+            console.error('Failed to apply recommendation:', error);
+        } finally {
+            setApplyingId(null);
+        }
+    };
+
+    const recalculateBudget = async () => {
+        setLoading(true);
+        await fetchBudgetData();
+        await fetchRecommendations();
+    };
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-96">
+                <Loader2 className="animate-spin text-emerald-500" size={48} />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -112,7 +185,7 @@ export default function BudgetPage() {
                             <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${autoOptimize ? 'translate-x-6' : 'translate-x-0.5'}`} />
                         </button>
                     </div>
-                    <Button className="bg-emerald-600 hover:bg-emerald-700">
+                    <Button onClick={recalculateBudget} className="bg-emerald-600 hover:bg-emerald-700">
                         <RefreshCw size={16} className="mr-2" />
                         Recalculate
                     </Button>
@@ -162,11 +235,11 @@ export default function BudgetPage() {
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-slate-500 text-sm">Avg. ROAS</p>
-                                <p className="text-2xl font-bold text-slate-900">3.8x</p>
+                                <p className="text-2xl font-bold text-slate-900">{avgRoas}x</p>
                             </div>
                             <Zap size={24} className="text-amber-500" />
                         </div>
-                        <p className="text-xs text-emerald-500 mt-1">+0.5x from last week</p>
+                        <p className="text-xs text-emerald-500 mt-1">Real-time data</p>
                     </CardContent>
                 </Card>
             </div>
@@ -205,21 +278,23 @@ export default function BudgetPage() {
                                     </ResponsiveContainer>
                                 </div>
                                 <div className="space-y-3">
-                                    {budgetAllocation.map((platform) => (
-                                        <div key={platform.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                    {budgetAllocation.length > 0 ? budgetAllocation.map((platform) => (
+                                        <div key={platform.platform} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: platform.color }} />
                                                 <div>
-                                                    <p className="font-medium text-sm">{platform.name}</p>
-                                                    <p className="text-xs text-slate-500">{platform.value}% allocation</p>
+                                                    <p className="font-medium text-sm">{platform.platform}</p>
+                                                    <p className="text-xs text-slate-500">{platform.percentage}% allocation</p>
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <p className="font-semibold text-sm">PKR {platform.spent.toLocaleString()}</p>
-                                                <p className="text-xs text-slate-500">{platform.remaining.toLocaleString()} left</p>
+                                                <p className="font-semibold text-sm">PKR {(platform.spent || 0).toLocaleString()}</p>
+                                                <p className="text-xs text-slate-500">{(platform.remaining || 0).toLocaleString()} left</p>
                                             </div>
                                         </div>
-                                    ))}
+                                    )) : (
+                                        <p className="text-slate-500 text-center py-4">No allocation data. Run seed script first.</p>
+                                    )}
                                 </div>
                             </div>
                         </CardContent>
@@ -243,19 +318,19 @@ export default function BudgetPage() {
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <p className="text-xs text-slate-500">Spend</p>
-                                            <p className="font-bold">PKR {dayNightData.day.spend.toLocaleString()}</p>
+                                            <p className="font-bold">PKR {(dayNightData.day.spend || 0).toLocaleString()}</p>
                                         </div>
                                         <div>
                                             <p className="text-xs text-slate-500">Conversions</p>
-                                            <p className="font-bold">{dayNightData.day.conversions}</p>
+                                            <p className="font-bold">{dayNightData.day.conversions || 0}</p>
                                         </div>
                                         <div>
                                             <p className="text-xs text-slate-500">CPC</p>
-                                            <p className="font-bold">PKR {dayNightData.day.cpc}</p>
+                                            <p className="font-bold">PKR {dayNightData.day.cpc || 0}</p>
                                         </div>
                                         <div>
                                             <p className="text-xs text-slate-500">ROAS</p>
-                                            <p className="font-bold">{dayNightData.day.roas}x</p>
+                                            <p className="font-bold">{dayNightData.day.roas || 0}x</p>
                                         </div>
                                     </div>
                                 </div>
@@ -263,24 +338,32 @@ export default function BudgetPage() {
                                     <div className="flex items-center gap-2 mb-3">
                                         <Moon size={20} className="text-indigo-500" />
                                         <span className="font-semibold">Night (6PM - 12AM)</span>
-                                        <Badge className="bg-emerald-100 text-emerald-700 text-xs">Better</Badge>
+                                        {dayNightData.night.roas > dayNightData.day.roas && (
+                                            <Badge className="bg-emerald-100 text-emerald-700 text-xs">Better</Badge>
+                                        )}
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <p className="text-xs text-slate-500">Spend</p>
-                                            <p className="font-bold">PKR {dayNightData.night.spend.toLocaleString()}</p>
+                                            <p className="font-bold">PKR {(dayNightData.night.spend || 0).toLocaleString()}</p>
                                         </div>
                                         <div>
                                             <p className="text-xs text-slate-500">Conversions</p>
-                                            <p className="font-bold text-emerald-600">{dayNightData.night.conversions} ↑</p>
+                                            <p className={`font-bold ${dayNightData.night.conversions > dayNightData.day.conversions ? 'text-emerald-600' : ''}`}>
+                                                {dayNightData.night.conversions || 0} {dayNightData.night.conversions > dayNightData.day.conversions && '↑'}
+                                            </p>
                                         </div>
                                         <div>
                                             <p className="text-xs text-slate-500">CPC</p>
-                                            <p className="font-bold text-emerald-600">PKR {dayNightData.night.cpc} ↓</p>
+                                            <p className={`font-bold ${dayNightData.night.cpc < dayNightData.day.cpc ? 'text-emerald-600' : ''}`}>
+                                                PKR {dayNightData.night.cpc || 0} {dayNightData.night.cpc < dayNightData.day.cpc && '↓'}
+                                            </p>
                                         </div>
                                         <div>
                                             <p className="text-xs text-slate-500">ROAS</p>
-                                            <p className="font-bold text-emerald-600">{dayNightData.night.roas}x ↑</p>
+                                            <p className={`font-bold ${dayNightData.night.roas > dayNightData.day.roas ? 'text-emerald-600' : ''}`}>
+                                                {dayNightData.night.roas || 0}x {dayNightData.night.roas > dayNightData.day.roas && '↑'}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -313,11 +396,12 @@ export default function BudgetPage() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {aiRecommendations.map((rec) => {
-                                const isApplied = appliedRecommendations.includes(rec.id);
+                            {recommendations.length > 0 ? recommendations.map((rec) => {
+                                const isApplied = appliedRecommendations.includes(rec._id);
+                                const isApplying = applyingId === rec._id;
                                 return (
                                     <div
-                                        key={rec.id}
+                                        key={rec._id}
                                         className={`p-4 rounded-lg border ${isApplied ? 'bg-emerald-50 border-emerald-200' : 'bg-white'}`}
                                     >
                                         <div className="flex items-start justify-between mb-2">
@@ -352,15 +436,25 @@ export default function BudgetPage() {
                                         ) : (
                                             <Button
                                                 size="sm"
-                                                onClick={() => applyRecommendation(rec.id)}
+                                                onClick={() => applyRecommendation(rec._id)}
+                                                disabled={isApplying}
                                                 className="w-full bg-purple-600 hover:bg-purple-700"
                                             >
-                                                Apply Suggestion
+                                                {isApplying ? (
+                                                    <>
+                                                        <Loader2 size={14} className="mr-2 animate-spin" />
+                                                        Applying...
+                                                    </>
+                                                ) : (
+                                                    'Apply Suggestion'
+                                                )}
                                             </Button>
                                         )}
                                     </div>
                                 );
-                            })}
+                            }) : (
+                                <p className="text-slate-500 text-center py-4">No recommendations. Run seed script first.</p>
+                            )}
                         </CardContent>
                     </Card>
 

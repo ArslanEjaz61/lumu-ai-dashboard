@@ -1,4 +1,5 @@
 const AdCreative = require('../models/AdCreative');
+const axios = require('axios');
 
 // Get all creatives
 exports.getAllCreatives = async (req, res) => {
@@ -88,32 +89,132 @@ exports.deleteCreative = async (req, res) => {
     }
 };
 
-// Generate AI Creative (using OpenAI)
+// Generate AI Creative (using OpenAI GPT-4 + DALL-E)
 exports.generateAiCreative = async (req, res) => {
     try {
-        const { prompt, type, language, platforms, previewOnly } = req.body;
+        const { prompt, type, language, platforms, previewOnly, referenceImages } = req.body;
         const Settings = require('../models/Settings');
         const settings = await Settings.getSettings();
 
-        if (!settings.openai.apiKey) {
-            return res.status(400).json({ error: 'OpenAI API key not configured. Please add it in Settings.' });
+        const openaiApiKey = settings?.openai?.apiKey || process.env.OPENAI_API_KEY;
+
+        if (!openaiApiKey) {
+            return res.status(400).json({ error: 'OpenAI API key not configured. Please add it in Settings or .env file.' });
         }
 
-        // Here you would call OpenAI API
-        // For now, return mock generated content
-        const generatedContent = {
-            headline: `AI Generated Headline for ${type}`,
-            description: 'This is an AI-generated description optimized for Pakistan audience.',
+        // 1. Generate ad copy using GPT-4
+        let generatedContent = {
+            headline: '',
+            description: '',
             primaryText: prompt,
-            suggestions: [
-                'Consider adding a discount percentage',
-                'Include free delivery message',
-                'Mention COD (Cash on Delivery) option'
-            ]
+            suggestions: []
         };
 
-        // Mock generated image URL (would come from AI image generation)
-        const generatedImageUrl = 'https://via.placeholder.com/512x512/9333ea/ffffff?text=AI+Generated';
+        try {
+            const languageInstruction = language === 'urdu'
+                ? 'Write in Urdu script.'
+                : language === 'roman_urdu'
+                    ? 'Write in Roman Urdu (Urdu written in English letters).'
+                    : 'Write in English.';
+
+            const platformContext = platforms?.length > 0
+                ? `Optimized for ${platforms.join(', ')}.`
+                : 'Optimized for social media ads.';
+
+            const gptResponse = await axios.post(
+                'https://api.openai.com/v1/chat/completions',
+                {
+                    model: 'gpt-4',
+                    messages: [
+                        {
+                            role: 'system',
+                            content: `You are an expert ad copywriter for Pakistan market. Create compelling ad copy that converts. ${languageInstruction} ${platformContext}
+                            
+                            Return JSON format:
+                            {
+                                "headline": "Short catchy headline (max 25 chars)",
+                                "description": "Compelling description (max 90 chars)",
+                                "primaryText": "Main ad copy (max 125 chars)",
+                                "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"]
+                            }`
+                        },
+                        {
+                            role: 'user',
+                            content: `Create ad copy for: ${prompt}`
+                        }
+                    ],
+                    temperature: 0.8,
+                    max_tokens: 500
+                },
+                {
+                    headers: {
+                        'Authorization': `Bearer ${openaiApiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            const gptContent = gptResponse.data.choices[0]?.message?.content;
+            if (gptContent) {
+                try {
+                    // Try to parse JSON response
+                    const parsed = JSON.parse(gptContent);
+                    generatedContent = {
+                        headline: parsed.headline || 'Your Perfect Choice',
+                        description: parsed.description || 'Premium quality products at best prices',
+                        primaryText: parsed.primaryText || prompt,
+                        suggestions: parsed.suggestions || ['Add discount', 'Mention free delivery', 'Include COD option']
+                    };
+                } catch (parseErr) {
+                    // If not JSON, use raw text
+                    generatedContent.headline = gptContent.substring(0, 50);
+                    generatedContent.description = gptContent.substring(0, 100);
+                }
+            }
+        } catch (gptError) {
+            console.error('GPT Error:', gptError.response?.data || gptError.message);
+            // Use fallback content
+            generatedContent = {
+                headline: `${prompt.substring(0, 20)}...`,
+                description: 'Premium quality at best prices in Pakistan!',
+                primaryText: prompt,
+                suggestions: ['Add a discount offer', 'Mention free delivery', 'Include COD option']
+            };
+        }
+
+        // 2. Generate image using DALL-E 3
+        let generatedImageUrl = 'https://via.placeholder.com/1024x1024/9333ea/ffffff?text=AI+Generated';
+
+        if (type === 'image' || !type) {
+            try {
+                const imagePrompt = `Professional ${type === 'video' ? 'video thumbnail' : 'advertisement image'} for: ${prompt}. 
+                Style: Modern, clean, premium, suitable for Pakistan market. 
+                No text on image. High quality product photography style.`;
+
+                const dalleResponse = await axios.post(
+                    'https://api.openai.com/v1/images/generations',
+                    {
+                        model: 'dall-e-3',
+                        prompt: imagePrompt,
+                        n: 1,
+                        size: '1024x1024',
+                        quality: 'standard',
+                        response_format: 'url'
+                    },
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${openaiApiKey}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }
+                );
+
+                generatedImageUrl = dalleResponse.data.data[0]?.url || generatedImageUrl;
+            } catch (dalleError) {
+                console.error('DALL-E Error:', dalleError.response?.data || dalleError.message);
+                // Keep placeholder image
+            }
+        }
 
         // If previewOnly, just return the preview data without saving
         if (previewOnly) {
@@ -123,7 +224,8 @@ exports.generateAiCreative = async (req, res) => {
                 generatedImageUrl,
                 content: {
                     headline: generatedContent.headline,
-                    description: generatedContent.description
+                    description: generatedContent.description,
+                    primaryText: generatedContent.primaryText
                 },
                 suggestions: generatedContent.suggestions
             });
@@ -145,7 +247,7 @@ exports.generateAiCreative = async (req, res) => {
             aiGenerated: {
                 isAiGenerated: true,
                 prompt: prompt,
-                model: 'gpt-4',
+                model: 'gpt-4 + dall-e-3',
                 generatedAt: new Date()
             },
             usage: {
