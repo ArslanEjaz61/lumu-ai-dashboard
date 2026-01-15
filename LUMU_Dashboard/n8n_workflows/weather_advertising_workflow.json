@@ -1,0 +1,289 @@
+{
+    "name": "LUMU Weather-Based Advertising",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hoursInterval": 6
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger",
+            "name": "Check Every 6 Hours",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                220,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "lumu-weather-ads",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Manual Weather Check",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                220,
+                600
+            ],
+            "webhookId": "lumu-weather-ads"
+        },
+        {
+            "parameters": {
+                "url": "=https://api.openweathermap.org/data/2.5/weather?q=Karachi,PK&appid={{ $env.OPENWEATHER_API_KEY }}&units=metric",
+                "options": {}
+            },
+            "id": "weather-karachi",
+            "name": "Weather - Karachi",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                480,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "=https://api.openweathermap.org/data/2.5/weather?q=Lahore,PK&appid={{ $env.OPENWEATHER_API_KEY }}&units=metric",
+                "options": {}
+            },
+            "id": "weather-lahore",
+            "name": "Weather - Lahore",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                480,
+                460
+            ]
+        },
+        {
+            "parameters": {
+                "url": "=https://api.openweathermap.org/data/2.5/weather?q=Islamabad,PK&appid={{ $env.OPENWEATHER_API_KEY }}&units=metric",
+                "options": {}
+            },
+            "id": "weather-islamabad",
+            "name": "Weather - Islamabad",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                480,
+                620
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const karachi = $('Weather - Karachi').first().json;\nconst lahore = $('Weather - Lahore').first().json;\nconst islamabad = $('Weather - Islamabad').first().json;\n\n// Get current date for seasonal context\nconst now = new Date();\nconst month = now.getMonth() + 1; // 1-12\nconst day = now.getDate();\n\n// Seasonal context for Pakistan\nlet season = 'Normal';\nlet seasonalEvent = null;\n\n// Islamic calendar events (approximate - adjust yearly)\nif (month === 3 || month === 4) {\n  season = 'Ramadan Season';\n  seasonalEvent = '🌙 Ramadan - Focus on Iftar items, dates, drinks, family meals';\n} else if (month === 4 || month === 5) {\n  season = 'Eid ul Fitr';\n  seasonalEvent = '🎉 Eid ul Fitr - Clothes, gifts, sweets, home decor';\n} else if (month === 6 || month === 7) {\n  season = 'Summer/Monsoon';\n  seasonalEvent = '🌧️ Monsoon Season - Umbrellas, raincoats, indoor items';\n} else if (month === 7 || month === 8) {\n  season = 'Eid ul Adha';\n  seasonalEvent = '🐄 Eid ul Adha - Butcher supplies, freezers, meat storage';\n} else if (month === 10 || month === 11) {\n  season = 'Wedding Season';\n  seasonalEvent = '💒 Wedding Season - Clothes, jewelry, gifts, decor';\n} else if (month === 12 || month === 1) {\n  season = 'Winter';\n  seasonalEvent = '❄️ Winter - Heaters, warm clothes, blankets';\n} else if (month === 5 || month === 6) {\n  season = 'Extreme Summer';\n  seasonalEvent = '☀️ Heat Wave - ACs, fans, coolers, cold drinks';\n}\n\n// Weather-based recommendations\nconst cities = [\n  { name: 'Karachi', data: karachi },\n  { name: 'Lahore', data: lahore },\n  { name: 'Islamabad', data: islamabad }\n];\n\nconst recommendations = cities.map(city => {\n  const temp = city.data?.main?.temp || 25;\n  const weather = city.data?.weather?.[0]?.main || 'Clear';\n  const humidity = city.data?.main?.humidity || 50;\n  \n  let productRec = [];\n  let adTone = 'Neutral';\n  \n  // Temperature-based recommendations\n  if (temp >= 40) {\n    productRec.push('🔥 Air conditioners, Fans, Cold drinks, Ice cream, Cotton clothes');\n    adTone = 'URGENT - Beat the heat!';\n  } else if (temp >= 35) {\n    productRec.push('☀️ Sunscreen, Sunglasses, Light clothes, Juice, Water bottles');\n    adTone = 'Stay cool this summer';\n  } else if (temp <= 15) {\n    productRec.push('❄️ Heaters, Blankets, Jackets, Hot drinks, Warm food');\n    adTone = 'Stay warm and cozy';\n  } else if (temp <= 20) {\n    productRec.push('🧥 Light jackets, Sweaters, Warm beverages');\n    adTone = 'Perfect weather for...';\n  }\n  \n  // Weather condition recommendations\n  if (weather === 'Rain' || weather === 'Thunderstorm') {\n    productRec.push('🌧️ Umbrellas, Raincoats, Indoor games, Movie snacks');\n    adTone = 'Rainy day essentials';\n  } else if (weather === 'Clouds') {\n    productRec.push('☁️ Outdoor activities, Picnic items, Walking shoes');\n    adTone = 'Great weather for shopping!';\n  }\n  \n  return {\n    city: city.name,\n    temperature: temp + '°C',\n    weather: weather,\n    humidity: humidity + '%',\n    recommendations: productRec.join('\\n'),\n    adTone: adTone\n  };\n});\n\nreturn [{\n  json: {\n    timestamp: now.toISOString(),\n    season: season,\n    seasonalEvent: seasonalEvent,\n    cities: recommendations,\n    summary: {\n      avgTemp: ((karachi?.main?.temp || 25) + (lahore?.main?.temp || 25) + (islamabad?.main?.temp || 20)) / 3,\n      dominantWeather: karachi?.weather?.[0]?.main || 'Clear'\n    }\n  }\n}];"
+            },
+            "id": "analyze-weather",
+            "name": "Analyze Weather & Season",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                760,
+                460
+            ]
+        },
+        {
+            "parameters": {
+                "model": "gpt-4",
+                "messages": {
+                    "values": [
+                        {
+                            "content": "=You are a marketing AI for LUMU, Pakistan's premier e-commerce marketplace. Based on the following weather and seasonal data, provide specific ad campaign recommendations.\n\nCurrent Data:\n{{ JSON.stringify($json, null, 2) }}\n\nProvide recommendations in this format:\n\n🌤️ WEATHER-BASED AD RECOMMENDATIONS\n[City-wise product recommendations based on weather]\n\n📅 SEASONAL CAMPAIGN IDEAS\n[Campaigns aligned with current season/events]\n\n🎨 CREATIVE SUGGESTIONS\n[Ad copy and visual recommendations]\n\n⏰ OPTIMAL AD TIMING\n[Best times to run ads based on weather patterns]\n\n💰 BUDGET ALLOCATION\n[How to split budget across cities based on conditions]\n\nUse Pakistani cultural context. Currency in PKR. Focus on mobile users."
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "ai-recommendations",
+            "name": "AI Weather Recommendations",
+            "type": "@n8n/n8n-nodes-langchain.openAi",
+            "typeVersion": 1.4,
+            "position": [
+                1020,
+                460
+            ]
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "report",
+                            "name": "weatherReport",
+                            "value": "=🌤️ LUMU WEATHER-BASED AD INTELLIGENCE\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📅 {{ new Date().toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) }}\n\n🗓️ SEASON: {{ $json.season }}\n{{ $json.seasonalEvent || 'No major event' }}\n\n🏙️ CITY WEATHER:\n{{ $json.cities.map(c => `• ${c.city}: ${c.temperature} - ${c.weather} (${c.humidity} humidity)`).join('\\n') }}\n\n📊 PRODUCT RECOMMENDATIONS BY CITY:\n{{ $json.cities.map(c => `\\n${c.city}:\\n${c.recommendations || 'General products'}`).join('\\n') }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "format-report",
+            "name": "Format Weather Report",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                1280,
+                460
+            ]
+        },
+        {
+            "parameters": {
+                "channel": "={{ $env.SLACK_MARKETING_CHANNEL || '#marketing-weather' }}",
+                "text": "={{ $json.weatherReport }}\n\n🤖 AI RECOMMENDATIONS:\n{{ $('AI Weather Recommendations').first().json.text || $('AI Weather Recommendations').first().json.message?.content || 'Generating...' }}",
+                "otherOptions": {}
+            },
+            "id": "send-slack",
+            "name": "Send to Slack",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2.2,
+            "position": [
+                1540,
+                360
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "={{ $env.TELEGRAM_MARKETING_CHAT }}",
+                "text": "={{ $json.weatherReport }}",
+                "additionalFields": {}
+            },
+            "id": "send-telegram",
+            "name": "Send Telegram Update",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                1540,
+                560
+            ]
+        }
+    ],
+    "connections": {
+        "Check Every 6 Hours": {
+            "main": [
+                [
+                    {
+                        "node": "Weather - Karachi",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Manual Weather Check": {
+            "main": [
+                [
+                    {
+                        "node": "Weather - Karachi",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Weather - Karachi": {
+            "main": [
+                [
+                    {
+                        "node": "Weather - Lahore",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Weather - Lahore": {
+            "main": [
+                [
+                    {
+                        "node": "Weather - Islamabad",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Weather - Islamabad": {
+            "main": [
+                [
+                    {
+                        "node": "Analyze Weather & Season",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Analyze Weather & Season": {
+            "main": [
+                [
+                    {
+                        "node": "AI Weather Recommendations",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Weather Recommendations": {
+            "main": [
+                [
+                    {
+                        "node": "Format Weather Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Weather Report": {
+            "main": [
+                [
+                    {
+                        "node": "Send to Slack",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Send Telegram Update",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "name": "LUMU",
+            "createdAt": "2025-01-09T00:00:00.000Z",
+            "updatedAt": "2025-01-09T00:00:00.000Z"
+        },
+        {
+            "name": "Weather",
+            "createdAt": "2025-01-09T00:00:00.000Z",
+            "updatedAt": "2025-01-09T00:00:00.000Z"
+        },
+        {
+            "name": "Seasonal",
+            "createdAt": "2025-01-09T00:00:00.000Z",
+            "updatedAt": "2025-01-09T00:00:00.000Z"
+        }
+    ],
+    "triggerCount": 2,
+    "updatedAt": "2025-01-09T00:00:00.000Z",
+    "versionId": "1"
+}

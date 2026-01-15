@@ -12,15 +12,28 @@ import {
     Settings,
     Menu,
     X,
+    Sparkles,
+    Rocket,
+    DollarSign,
+    Cloud,
+    Target,
+    RefreshCw,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { api, BrandingData } from "@/lib/api";
 
 const navItems = [
     { href: "/", label: "Overview", icon: LayoutDashboard },
+    { href: "/studio", label: "Creative Studio", icon: Sparkles },
     { href: "/campaigns", label: "Campaigns", icon: Megaphone },
+    { href: "/publish", label: "Publish Ads", icon: Rocket },
+    { href: "/budget", label: "Budget AI", icon: DollarSign },
     { href: "/audience", label: "Audience", icon: Users },
     { href: "/geo", label: "Geo Analytics", icon: MapPin },
+    { href: "/triggers", label: "Weather Triggers", icon: Cloud },
+    { href: "/cro", label: "CRO & Funnel", icon: Target },
+    { href: "/retargeting", label: "Retargeting", icon: RefreshCw },
     { href: "/fraud", label: "Fraud Report", icon: ShieldAlert },
     { href: "/insights", label: "AI Insights", icon: Lightbulb },
 ];
@@ -28,6 +41,25 @@ const navItems = [
 export function Sidebar() {
     const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
+    const [branding, setBranding] = useState<BrandingData>({
+        dashboardName: 'LUMU',
+        tagline: 'AI Dashboard',
+        logoUrl: '',
+        primaryColor: '#10b981'
+    });
+
+    useEffect(() => {
+        const fetchBranding = async () => {
+            try {
+                const data = await api.getBranding();
+                setBranding(data);
+            } catch (error) {
+                // Use defaults if API fails
+                console.error('Failed to fetch branding:', error);
+            }
+        };
+        fetchBranding();
+    }, []);
 
     return (
         <>
@@ -50,24 +82,31 @@ export function Sidebar() {
             {/* Sidebar */}
             <aside
                 className={cn(
-                    "fixed left-0 top-0 z-40 h-screen w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white transition-transform duration-300",
+                    "fixed left-0 top-0 z-40 h-screen w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white transition-transform duration-300 flex flex-col",
                     "lg:translate-x-0",
                     isOpen ? "translate-x-0" : "-translate-x-full"
                 )}
             >
                 {/* Logo */}
                 <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-700">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-lg">
-                        L
+                    <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg"
+                        style={{ background: `linear-gradient(135deg, ${branding.primaryColor}, #06b6d4)` }}
+                    >
+                        {branding.logoUrl ? (
+                            <img src={branding.logoUrl} alt="Logo" className="w-8 h-8 rounded" />
+                        ) : (
+                            branding.dashboardName.charAt(0).toUpperCase()
+                        )}
                     </div>
                     <div>
-                        <h1 className="font-bold text-lg">LUMU</h1>
-                        <p className="text-xs text-slate-400">AI Dashboard</p>
+                        <h1 className="font-bold text-lg">{branding.dashboardName}</h1>
+                        <p className="text-xs text-slate-400">{branding.tagline}</p>
                     </div>
                 </div>
 
-                {/* Navigation */}
-                <nav className="p-4 space-y-1">
+                {/* Navigation - Scrollable */}
+                <nav className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
                     {navItems.map((item) => {
                         const isActive = pathname === item.href;
                         const Icon = item.icon;
@@ -91,11 +130,16 @@ export function Sidebar() {
                     })}
                 </nav>
 
-                {/* Bottom Section */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700">
+                {/* Bottom Section - Fixed at bottom */}
+                <div className="shrink-0 p-4 border-t border-slate-700 bg-slate-900">
                     <Link
                         href="/settings"
-                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all"
+                        className={cn(
+                            "flex items-center gap-3 px-4 py-3 rounded-lg transition-all",
+                            pathname === "/settings"
+                                ? "bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-400 border-l-2 border-emerald-400"
+                                : "text-slate-400 hover:text-white hover:bg-slate-700/50"
+                        )}
                     >
                         <Settings size={20} />
                         <span className="font-medium">Settings</span>

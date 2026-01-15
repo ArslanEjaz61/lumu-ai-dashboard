@@ -1,0 +1,980 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+    Plus,
+    Sparkles,
+    Image,
+    Video,
+    Type,
+    Send,
+    Calendar,
+    Facebook,
+    Instagram,
+    Loader2,
+    Eye,
+    Trash2,
+    Edit2,
+    Copy,
+    Wand2,
+    Layout,
+    Globe,
+    Upload,
+    X,
+    ImagePlus,
+} from "lucide-react";
+
+// API Base URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+interface Creative {
+    _id: string;
+    name: string;
+    creativeType: string;
+    status: string;
+    content: {
+        headline: string;
+        description: string;
+        primaryText: string;
+        callToAction: string;
+        language: string;
+    };
+    media: {
+        imageUrl: string;
+        videoUrl: string;
+    };
+    aiGenerated: {
+        isAiGenerated: boolean;
+        prompt: string;
+    };
+    usage: {
+        usageType: string;
+        platforms: string[];
+    };
+    createdAt: string;
+}
+
+export default function CreativeStudioPage() {
+    const [creatives, setCreatives] = useState<Creative[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'all' | 'manual' | 'ai'>('all');
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingCreative, setEditingCreative] = useState<Creative | null>(null);
+    const [createMode, setCreateMode] = useState<'manual' | 'ai'>('manual');
+    const [generating, setGenerating] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const refImageInputRef = useRef<HTMLInputElement>(null);
+
+    // Form state
+    const [formData, setFormData] = useState({
+        name: '',
+        type: 'image',
+        headline: '',
+        description: '',
+        primaryText: '',
+        callToAction: 'shop_now',
+        language: 'english',
+        imageUrl: '',
+        platforms: ['facebook', 'instagram'],
+        usageType: 'ad',
+        prompt: '',
+        referenceImages: [] as string[] // For AI - multiple reference images
+    });
+
+    // AI Generated preview
+    const [generatedImage, setGeneratedImage] = useState<string>('');
+    const [generatedContent, setGeneratedContent] = useState<{ headline: string, description: string } | null>(null);
+
+    useEffect(() => {
+        fetchCreatives();
+    }, []);
+
+    const fetchCreatives = async () => {
+        try {
+            const res = await fetch(`${API_URL}/creatives`);
+            const data = await res.json();
+            setCreatives(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Failed to fetch creatives:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleFileUpload = async (file: File, isReference: boolean = false) => {
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const formDataUpload = new FormData();
+            formDataUpload.append('image', file);
+
+            const res = await fetch(`${API_URL}/upload/image`, {
+                method: 'POST',
+                body: formDataUpload
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                const fullUrl = `${API_URL.replace('/api', '')}${data.url}`;
+
+                if (isReference) {
+                    setFormData(prev => ({ ...prev, referenceImages: [...prev.referenceImages, fullUrl] }));
+                } else {
+                    setFormData(prev => ({ ...prev, imageUrl: fullUrl }));
+                }
+            }
+        } catch (error) {
+            console.error('Upload failed:', error);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handleCreateManual = async () => {
+        try {
+            setGenerating(true);
+            const res = await fetch(`${API_URL}/creatives`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: formData.name || `Creative ${new Date().toLocaleDateString()}`,
+                    creativeType: formData.type,
+                    content: {
+                        headline: formData.headline,
+                        description: formData.description,
+                        primaryText: formData.primaryText,
+                        callToAction: formData.callToAction,
+                        language: formData.language
+                    },
+                    media: {
+                        imageUrl: formData.imageUrl
+                    },
+                    usage: {
+                        usageType: formData.usageType,
+                        platforms: formData.platforms
+                    },
+                    status: 'draft'
+                })
+            });
+            if (res.ok) {
+                fetchCreatives();
+                setShowCreateModal(false);
+                resetForm();
+            }
+        } catch (error) {
+            console.error('Failed to create creative:', error);
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const handleGenerateAI = async () => {
+        if (!formData.prompt) return;
+        try {
+            setGenerating(true);
+            const res = await fetch(`${API_URL}/creatives/generate-ai`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: formData.prompt,
+                    type: formData.type,
+                    language: formData.language,
+                    platforms: formData.platforms,
+                    referenceImages: formData.referenceImages,
+                    previewOnly: true // Just generate preview, don't save yet
+                })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                // Set generated preview
+                setGeneratedImage(data.generatedImageUrl || 'https://via.placeholder.com/512x512?text=AI+Generated');
+                setGeneratedContent({
+                    headline: data.content?.headline || 'AI Generated Headline',
+                    description: data.content?.description || 'AI generated description for your ad'
+                });
+            }
+        } catch (error) {
+            console.error('Failed to generate AI creative:', error);
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    // Save AI generated creative after preview
+    const handleSaveAICreative = async () => {
+        try {
+            setGenerating(true);
+            const res = await fetch(`${API_URL}/creatives`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: formData.name || `AI Creative - ${new Date().toLocaleDateString()}`,
+                    creativeType: formData.type,
+                    content: {
+                        headline: generatedContent?.headline || '',
+                        description: generatedContent?.description || '',
+                        primaryText: formData.prompt,
+                        callToAction: formData.callToAction,
+                        language: formData.language
+                    },
+                    media: {
+                        imageUrl: generatedImage
+                    },
+                    usage: {
+                        usageType: formData.usageType,
+                        platforms: formData.platforms
+                    },
+                    aiGenerated: {
+                        isAiGenerated: true,
+                        prompt: formData.prompt
+                    },
+                    status: 'draft'
+                })
+            });
+            if (res.ok) {
+                fetchCreatives();
+                setShowCreateModal(false);
+                resetForm();
+                setGeneratedImage('');
+                setGeneratedContent(null);
+            }
+        } catch (error) {
+            console.error('Failed to save AI creative:', error);
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Delete this creative?')) return;
+        try {
+            await fetch(`${API_URL}/creatives/${id}`, { method: 'DELETE' });
+            fetchCreatives();
+        } catch (error) {
+            console.error('Failed to delete:', error);
+        }
+    };
+
+    const handleToggleStatus = async (id: string, currentStatus: string) => {
+        const newStatus = currentStatus === 'paused' ? 'live' : 'paused';
+        try {
+            await fetch(`${API_URL}/creatives/${id}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus })
+            });
+            fetchCreatives();
+        } catch (error) {
+            console.error('Failed to toggle status:', error);
+        }
+    };
+
+    const handleEdit = (creative: Creative) => {
+        setEditingCreative(creative);
+        setCreateMode('manual');
+        setFormData({
+            name: creative.name,
+            type: creative.creativeType || 'image',
+            headline: creative.content?.headline || '',
+            description: creative.content?.description || '',
+            primaryText: creative.content?.primaryText || '',
+            callToAction: creative.content?.callToAction || 'shop_now',
+            language: creative.content?.language || 'english',
+            imageUrl: creative.media?.imageUrl || '',
+            platforms: creative.usage?.platforms || ['facebook', 'instagram'],
+            usageType: creative.usage?.usageType || 'ad',
+            prompt: '',
+            referenceImages: []
+        });
+        setShowCreateModal(true);
+    };
+
+    const handleUpdate = async () => {
+        if (!editingCreative) return;
+        try {
+            setGenerating(true);
+            const res = await fetch(`${API_URL}/creatives/${editingCreative._id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: formData.name,
+                    creativeType: formData.type,
+                    content: {
+                        headline: formData.headline,
+                        description: formData.description,
+                        primaryText: formData.primaryText,
+                        callToAction: formData.callToAction,
+                        language: formData.language
+                    },
+                    media: {
+                        imageUrl: formData.imageUrl
+                    },
+                    usage: {
+                        usageType: formData.usageType,
+                        platforms: formData.platforms
+                    }
+                })
+            });
+            if (res.ok) {
+                fetchCreatives();
+                setShowCreateModal(false);
+                setEditingCreative(null);
+                resetForm();
+            }
+        } catch (error) {
+            console.error('Failed to update:', error);
+        } finally {
+            setGenerating(false);
+        }
+    };
+
+    const resetForm = () => {
+        setFormData({
+            name: '',
+            type: 'image',
+            headline: '',
+            description: '',
+            primaryText: '',
+            callToAction: 'shop_now',
+            language: 'english',
+            imageUrl: '',
+            platforms: ['facebook', 'instagram'],
+            usageType: 'ad',
+            prompt: '',
+            referenceImages: []
+        });
+        setGeneratedImage('');
+        setGeneratedContent(null);
+    };
+
+    const filteredCreatives = creatives.filter(c => {
+        if (activeTab === 'ai') return c.aiGenerated?.isAiGenerated;
+        if (activeTab === 'manual') return !c.aiGenerated?.isAiGenerated;
+        return true;
+    });
+
+    const getStatusColor = (status: string) => {
+        const colors: Record<string, string> = {
+            draft: 'bg-slate-100 text-slate-600',
+            pending: 'bg-yellow-100 text-yellow-600',
+            approved: 'bg-blue-100 text-blue-600',
+            live: 'bg-emerald-100 text-emerald-600',
+            paused: 'bg-orange-100 text-orange-600'
+        };
+        return colors[status] || 'bg-slate-100 text-slate-600';
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Sparkles className="text-purple-500" />
+                        Creative Studio
+                    </h1>
+                    <p className="text-slate-500">Create ads manually or generate with AI</p>
+                </div>
+                <div className="flex gap-2">
+                    <Button
+                        onClick={() => { setCreateMode('manual'); setShowCreateModal(true); }}
+                        variant="outline"
+                    >
+                        <Plus size={16} className="mr-2" />
+                        Manual Create
+                    </Button>
+                    <Button
+                        onClick={() => { setCreateMode('ai'); setShowCreateModal(true); }}
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                    >
+                        <Wand2 size={16} className="mr-2" />
+                        AI Generate
+                    </Button>
+                </div>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-slate-500">Total Creatives</p>
+                                <p className="text-2xl font-bold">{creatives.length}</p>
+                            </div>
+                            <Layout className="w-8 h-8 text-purple-500" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-slate-500">AI Generated</p>
+                                <p className="text-2xl font-bold">{creatives.filter(c => c.aiGenerated?.isAiGenerated).length}</p>
+                            </div>
+                            <Sparkles className="w-8 h-8 text-pink-500" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-slate-500">Live Ads</p>
+                                <p className="text-2xl font-bold">{creatives.filter(c => c.status === 'live').length}</p>
+                            </div>
+                            <Globe className="w-8 h-8 text-emerald-500" />
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-slate-500">Drafts</p>
+                                <p className="text-2xl font-bold">{creatives.filter(c => c.status === 'draft').length}</p>
+                            </div>
+                            <Edit2 className="w-8 h-8 text-slate-500" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-2 border-b pb-4">
+                {['all', 'manual', 'ai'].map((tab) => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab as any)}
+                        className={`px-4 py-2 rounded-lg font-medium capitalize transition-colors ${activeTab === tab
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'text-slate-600 hover:bg-slate-100'
+                            }`}
+                    >
+                        {tab === 'ai' ? 'AI Generated' : tab}
+                    </button>
+                ))}
+            </div>
+
+            {/* Creatives Grid */}
+            {loading ? (
+                <div className="flex items-center justify-center py-20">
+                    <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+                </div>
+            ) : filteredCreatives.length === 0 ? (
+                <Card>
+                    <CardContent className="py-16 text-center">
+                        <Sparkles className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                        <p className="text-slate-500">No creatives yet</p>
+                        <p className="text-sm text-slate-400">Create your first ad creative</p>
+                    </CardContent>
+                </Card>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredCreatives.map((creative) => (
+                        <Card key={creative._id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                            {/* Preview Image */}
+                            <div className="h-40 bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
+                                {creative.media?.imageUrl ? (
+                                    <img src={creative.media.imageUrl} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                    <Image className="w-12 h-12 text-purple-300" />
+                                )}
+                            </div>
+
+                            <CardContent className="p-4">
+                                <div className="flex items-start justify-between mb-2">
+                                    <div>
+                                        <h3 className="font-semibold truncate">{creative.name}</h3>
+                                        <p className="text-xs text-slate-500">{creative.creativeType}</p>
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <Badge className={getStatusColor(creative.status)}>
+                                            {creative.status}
+                                        </Badge>
+                                        {creative.aiGenerated?.isAiGenerated && (
+                                            <Badge className="bg-purple-100 text-purple-600">
+                                                <Sparkles size={10} className="mr-1" /> AI
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {creative.content?.headline && (
+                                    <p className="text-sm text-slate-700 mb-2 line-clamp-2">
+                                        {creative.content.headline}
+                                    </p>
+                                )}
+
+                                <div className="flex items-center gap-2 mt-3">
+                                    {creative.usage?.platforms?.includes('facebook') && (
+                                        <Facebook size={14} className="text-blue-600" />
+                                    )}
+                                    {creative.usage?.platforms?.includes('instagram') && (
+                                        <Instagram size={14} className="text-pink-600" />
+                                    )}
+                                    <span className="text-xs text-slate-400 ml-auto">
+                                        {new Date(creative.createdAt).toLocaleDateString()}
+                                    </span>
+                                </div>
+
+                                <div className="flex gap-1 mt-3 pt-3 border-t">
+                                    <Button variant="ghost" size="sm" className="flex-1">
+                                        <Eye size={14} className="mr-1" /> View
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="flex-1" onClick={() => handleEdit(creative)}>
+                                        <Edit2 size={14} className="mr-1" /> Edit
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleToggleStatus(creative._id, creative.status)}
+                                        className={creative.status === 'paused' ? 'text-emerald-500 hover:text-emerald-700' : 'text-orange-500 hover:text-orange-700'}
+                                        title={creative.status === 'paused' ? 'Activate' : 'Pause'}
+                                    >
+                                        {creative.status === 'paused' ? (
+                                            <span className="text-xs">Active</span>
+                                        ) : (
+                                            <span className="text-xs">Pause</span>
+                                        )}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDelete(creative._id)}
+                                        className="text-red-500 hover:text-red-700"
+                                    >
+                                        <Trash2 size={14} />
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
+
+            {/* Create/Edit Modal */}
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                {editingCreative ? (
+                                    <>
+                                        <Edit2 className="text-blue-500" />
+                                        Edit Creative
+                                    </>
+                                ) : createMode === 'ai' ? (
+                                    <>
+                                        <Wand2 className="text-purple-500" />
+                                        AI Generate Creative
+                                    </>
+                                ) : (
+                                    <>
+                                        <Plus className="text-emerald-500" />
+                                        Create Manual Creative
+                                    </>
+                                )}
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {createMode === 'ai' ? (
+                                /* AI Mode */
+                                <>
+                                    <div>
+                                        <label className="text-sm font-medium">Your Prompt</label>
+                                        <textarea
+                                            value={formData.prompt}
+                                            onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
+                                            placeholder="Describe the ad you want to create... e.g., 'Create an exciting Eid sale ad for fashion products targeting young women in Karachi'"
+                                            className="w-full mt-1 p-3 border rounded-lg h-28 resize-none"
+                                        />
+                                    </div>
+
+                                    {/* Reference Images - Multiple smaller inline */}
+                                    <div>
+                                        <label className="text-sm font-medium">Attach Reference Images (Optional)</label>
+                                        <input
+                                            type="file"
+                                            ref={refImageInputRef}
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) handleFileUpload(file, true);
+                                            }}
+                                        />
+                                        <div className="flex items-center gap-2 mt-2 flex-wrap">
+                                            {formData.referenceImages.map((imgUrl, index) => (
+                                                <div key={index} className="relative w-16 h-16 rounded-lg overflow-hidden border flex-shrink-0">
+                                                    <img src={imgUrl} alt={`Ref ${index + 1}`} className="w-full h-full object-cover" />
+                                                    <button
+                                                        onClick={() => setFormData({
+                                                            ...formData,
+                                                            referenceImages: formData.referenceImages.filter((_, i) => i !== index)
+                                                        })}
+                                                        className="absolute -top-1 -right-1 bg-red-500 text-white p-0.5 rounded-full hover:bg-red-600"
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <button
+                                                onClick={() => refImageInputRef.current?.click()}
+                                                disabled={uploading}
+                                                className="w-16 h-16 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-0.5 hover:bg-purple-50 hover:border-purple-300 transition-colors flex-shrink-0"
+                                            >
+                                                {uploading ? (
+                                                    <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <ImagePlus className="w-4 h-4 text-purple-400" />
+                                                        <span className="text-[9px] text-slate-400">Add</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                        <p className="text-[11px] text-slate-400 mt-1">
+                                            Upload images as reference material for AI generation
+                                        </p>
+                                    </div>
+
+                                    {/* Generate Button */}
+                                    <Button
+                                        onClick={handleGenerateAI}
+                                        disabled={generating || !formData.prompt}
+                                        className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                                    >
+                                        {generating ? (
+                                            <>
+                                                <Loader2 size={16} className="mr-2 animate-spin" />
+                                                Generating...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Wand2 size={16} className="mr-2" />
+                                                Generate AI Creative
+                                            </>
+                                        )}
+                                    </Button>
+
+                                    {/* Generated Output Preview */}
+                                    {generatedImage && (
+                                        <div className="border-2 border-purple-200 rounded-xl p-4 bg-purple-50/30">
+                                            <h4 className="text-sm font-semibold text-purple-700 mb-3 flex items-center gap-2">
+                                                <Sparkles size={16} />
+                                                Generated Output
+                                            </h4>
+                                            <div className="relative">
+                                                <img
+                                                    src={generatedImage}
+                                                    alt="AI Generated"
+                                                    className="w-full h-64 object-cover rounded-lg border shadow-sm"
+                                                />
+                                                <div className="absolute top-2 right-2">
+                                                    <Badge className="bg-purple-500 text-white">AI Generated</Badge>
+                                                </div>
+                                            </div>
+                                            {generatedContent && (
+                                                <div className="mt-3 space-y-2">
+                                                    <div>
+                                                        <p className="text-xs font-medium text-slate-500">Headline</p>
+                                                        <p className="text-sm font-semibold">{generatedContent.headline}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-medium text-slate-500">Description</p>
+                                                        <p className="text-sm text-slate-600">{generatedContent.description}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Save Generated Creative Button */}
+                                            <Button
+                                                onClick={handleSaveAICreative}
+                                                disabled={generating}
+                                                className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700"
+                                            >
+                                                {generating ? (
+                                                    <>
+                                                        <Loader2 size={16} className="mr-2 animate-spin" />
+                                                        Saving...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Plus size={16} className="mr-2" />
+                                                        Save Creative
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-sm font-medium">Type</label>
+                                            <select
+                                                value={formData.type}
+                                                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                                className="w-full mt-1 p-2 border rounded-lg bg-white"
+                                            >
+                                                <option value="image">Image Ad</option>
+                                                <option value="video">Video Ad</option>
+                                                <option value="carousel">Carousel</option>
+                                                <option value="story">Story</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium">Language</label>
+                                            <select
+                                                value={formData.language}
+                                                onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                                                className="w-full mt-1 p-2 border rounded-lg bg-white"
+                                            >
+                                                <option value="english">English</option>
+                                                <option value="urdu">Urdu</option>
+                                                <option value="roman_urdu">Roman Urdu</option>
+                                                <option value="mixed">Mixed</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                /* Manual Mode */
+                                <>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-sm font-medium">Name</label>
+                                            <input
+                                                type="text"
+                                                value={formData.name}
+                                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                placeholder="Creative name"
+                                                className="w-full mt-1 p-2 border rounded-lg"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium">Type</label>
+                                            <select
+                                                value={formData.type}
+                                                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                                className="w-full mt-1 p-2 border rounded-lg bg-white"
+                                            >
+                                                <option value="image">Image</option>
+                                                <option value="video">Video</option>
+                                                <option value="carousel">Carousel</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium">Headline</label>
+                                        <input
+                                            type="text"
+                                            value={formData.headline}
+                                            onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
+                                            placeholder="Ad headline"
+                                            className="w-full mt-1 p-2 border rounded-lg"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium">Description</label>
+                                        <textarea
+                                            value={formData.description}
+                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                            placeholder="Ad description"
+                                            className="w-full mt-1 p-2 border rounded-lg h-20 resize-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium">Image</label>
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) handleFileUpload(file, false);
+                                            }}
+                                        />
+                                        {formData.imageUrl ? (
+                                            <div className="relative w-full h-40 rounded-lg overflow-hidden border mt-1">
+                                                <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                                <button
+                                                    onClick={() => setFormData({ ...formData, imageUrl: '' })}
+                                                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => fileInputRef.current?.click()}
+                                                disabled={uploading}
+                                                className="w-full h-40 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-emerald-50 hover:border-emerald-300 transition-colors mt-1"
+                                            >
+                                                {uploading ? (
+                                                    <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+                                                ) : (
+                                                    <>
+                                                        <Upload className="w-8 h-8 text-emerald-400" />
+                                                        <span className="text-sm text-slate-500">Click to upload image</span>
+                                                        <span className="text-xs text-slate-400">or drag and drop</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        )}
+                                        <div className="mt-2">
+                                            <input
+                                                type="text"
+                                                value={formData.imageUrl}
+                                                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                                                placeholder="Or paste image URL..."
+                                                className="w-full p-2 border rounded-lg text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-sm font-medium">Call to Action</label>
+                                            <select
+                                                value={formData.callToAction}
+                                                onChange={(e) => setFormData({ ...formData, callToAction: e.target.value })}
+                                                className="w-full mt-1 p-2 border rounded-lg bg-white"
+                                            >
+                                                <option value="shop_now">Shop Now</option>
+                                                <option value="learn_more">Learn More</option>
+                                                <option value="order_now">Order Now</option>
+                                                <option value="get_offer">Get Offer</option>
+                                                <option value="contact_us">Contact Us</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm font-medium">Language</label>
+                                            <select
+                                                value={formData.language}
+                                                onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+                                                className="w-full mt-1 p-2 border rounded-lg bg-white"
+                                            >
+                                                <option value="english">English</option>
+                                                <option value="urdu">Urdu</option>
+                                                <option value="roman_urdu">Roman Urdu</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </>
+                            )
+                            }
+
+                            {/* Common: Platforms */}
+                            <div>
+                                <label className="text-sm font-medium">Platforms</label>
+                                <div className="flex flex-wrap gap-3 mt-2">
+                                    {[
+                                        { id: 'facebook', label: 'Facebook', color: '#1877F2' },
+                                        { id: 'instagram', label: 'Instagram', color: '#E4405F' },
+                                        { id: 'google', label: 'Google', color: '#4285F4' },
+                                        { id: 'youtube', label: 'YouTube', color: '#FF0000' },
+                                        { id: 'tiktok', label: 'TikTok', color: '#000000' }
+                                    ].map((platform) => (
+                                        <label key={platform.id} className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.platforms.includes(platform.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setFormData({ ...formData, platforms: [...formData.platforms, platform.id] });
+                                                    } else {
+                                                        setFormData({ ...formData, platforms: formData.platforms.filter(p => p !== platform.id) });
+                                                    }
+                                                }}
+                                                className="rounded"
+                                            />
+                                            <span className="text-sm" style={{ color: platform.color }}>{platform.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Usage Type */}
+                            <div>
+                                <label className="text-sm font-medium">Use As</label>
+                                <div className="flex gap-4 mt-2">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            checked={formData.usageType === 'ad'}
+                                            onChange={() => setFormData({ ...formData, usageType: 'ad' })}
+                                        />
+                                        <span className="text-sm">Ad</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            checked={formData.usageType === 'post'}
+                                            onChange={() => setFormData({ ...formData, usageType: 'post' })}
+                                        />
+                                        <span className="text-sm">Post</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            checked={formData.usageType === 'both'}
+                                            onChange={() => setFormData({ ...formData, usageType: 'both' })}
+                                        />
+                                        <span className="text-sm">Both</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Action Buttons - Hide for AI mode (has inline buttons) */}
+                            {(createMode === 'manual' || editingCreative) && (
+                                <div className="flex gap-3 pt-4">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => { setShowCreateModal(false); setEditingCreative(null); resetForm(); }}
+                                        className="flex-1"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        onClick={editingCreative ? handleUpdate : handleCreateManual}
+                                        disabled={generating}
+                                        className={`flex-1 ${editingCreative ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600'}`}
+                                    >
+                                        {generating ? (
+                                            <Loader2 size={16} className="mr-2 animate-spin" />
+                                        ) : editingCreative ? (
+                                            <Edit2 size={16} className="mr-2" />
+                                        ) : (
+                                            <Plus size={16} className="mr-2" />
+                                        )}
+                                        {generating ? 'Saving...' : editingCreative ? 'Save Changes' : 'Create'}
+                                    </Button>
+                                </div>
+                            )}
+
+                            {/* Cancel button for AI mode */}
+                            {createMode === 'ai' && !editingCreative && (
+                                <div className="pt-4 border-t">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => { setShowCreateModal(false); resetForm(); }}
+                                        className="w-full"
+                                    >
+                                        Cancel
+                                    </Button>
+                                </div>
+                            )}
+                        </CardContent >
+                    </Card >
+                </div >
+            )}
+        </div >
+    );
+}

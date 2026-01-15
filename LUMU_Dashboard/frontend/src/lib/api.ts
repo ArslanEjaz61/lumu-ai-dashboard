@@ -220,6 +220,72 @@ class ApiClient {
         if (endDate) params.append('endDate', endDate);
         return this.request<RegionData[]>(`/geo/regions?${params}`);
     }
+
+    // Settings
+    async getSettings() {
+        return this.request<SettingsData>('/settings');
+    }
+
+    async updateSettings(settings: Partial<SettingsData>) {
+        return this.request<{ success: boolean; message: string }>('/settings', {
+            method: 'PUT',
+            body: JSON.stringify(settings),
+        });
+    }
+
+    async testConnection(platform: string) {
+        return this.request<{ success: boolean; message: string }>(`/settings/test/${platform}`, {
+            method: 'POST',
+        });
+    }
+
+    // Get branding for sidebar
+    async getBranding() {
+        return this.request<BrandingData>('/settings/branding');
+    }
+
+    // User management (separate User model)
+    async getUsers() {
+        return this.request<UserData[]>('/users');
+    }
+
+    async getUserById(userId: string) {
+        return this.request<UserData>(`/users/${userId}`);
+    }
+
+    async addUser(user: { name: string; email: string; password: string; role?: string; phone?: string; department?: string }) {
+        return this.request<{ success: boolean; message: string; user: UserData }>('/users', {
+            method: 'POST',
+            body: JSON.stringify(user),
+        });
+    }
+
+    async updateUser(userId: string, updates: Partial<UserData>) {
+        return this.request<{ success: boolean; message: string; user: UserData }>(`/users/${userId}`, {
+            method: 'PUT',
+            body: JSON.stringify(updates),
+        });
+    }
+
+    async updatePassword(userId: string, currentPassword: string, newPassword: string) {
+        return this.request<{ success: boolean; message: string }>(`/users/${userId}/password`, {
+            method: 'PUT',
+            body: JSON.stringify({ currentPassword, newPassword }),
+        });
+    }
+
+    async deleteUser(userId: string) {
+        return this.request<{ success: boolean; message: string }>(`/users/${userId}`, {
+            method: 'DELETE',
+        });
+    }
+
+    async login(email: string, password: string) {
+        return this.request<{ success: boolean; user: UserData }>('/users/login', {
+            method: 'POST',
+            body: JSON.stringify({ email, password }),
+        });
+    }
 }
 
 // Types
@@ -478,5 +544,75 @@ export interface RegionData {
     revenue: number;
 }
 
+export interface SettingsData {
+    googleAds: {
+        developerToken: string;
+        clientId: string;
+        clientSecret: string;
+        refreshToken: string;
+        customerId: string;
+        connected: boolean;
+    };
+    metaAds: {
+        appId: string;
+        appSecret: string;
+        accessToken: string;
+        adAccountId: string;
+        connected: boolean;
+    };
+    ga4: {
+        propertyId: string;
+        accessToken: string;
+        connected: boolean;
+    };
+    clickCease: {
+        apiKey: string;
+        domain: string;
+        connected: boolean;
+    };
+    openai: {
+        apiKey: string;
+        connected: boolean;
+    };
+    n8n: {
+        dailyReportWebhook: string;
+        budgetAlertWebhook: string;
+        fraudAlertWebhook: string;
+    };
+    branding: {
+        dashboardName: string;
+        tagline: string;
+        logoUrl: string;
+        primaryColor: string;
+    };
+    users: UserData[];
+    currency: string;
+    syncInterval: number;
+    dataRetention: number;
+    updatedAt: string;
+}
+
+export interface UserData {
+    _id: string;
+    name: string;
+    email: string;
+    role: 'admin' | 'manager' | 'viewer';
+    phone?: string;
+    department?: string;
+    avatar?: string;
+    active: boolean;
+    lastLogin?: string;
+    createdAt: string;
+    updatedAt?: string;
+}
+
+export interface BrandingData {
+    dashboardName: string;
+    tagline: string;
+    logoUrl: string;
+    primaryColor: string;
+}
+
 // Export singleton instance
 export const api = new ApiClient(API_BASE_URL);
+

@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const path = require('path');
+const morgan = require('morgan');
 
 // Import routes
 const analyticsRoutes = require('./routes/analytics');
@@ -10,12 +12,30 @@ const audienceRoutes = require('./routes/audience');
 const fraudRoutes = require('./routes/fraud');
 const insightsRoutes = require('./routes/insights');
 const geoRoutes = require('./routes/geo');
+const settingsRoutes = require('./routes/settings');
+const usersRoutes = require('./routes/users');
+const campaignManagerRoutes = require('./routes/campaignManager');
+const creativesRoutes = require('./routes/creatives');
+const uploadRoutes = require('./routes/upload');
+const publishRoutes = require('./routes/publish');
+const budgetRoutes = require('./routes/budget');
+const triggersRoutes = require('./routes/triggers');
+const croRoutes = require('./routes/cro');
+const retargetingRoutes = require('./routes/retargeting');
 
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Morgan Logger - shows API calls in console
+// Format: :method :url :status :response-time ms
+app.use(morgan('dev'));
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/lumu_dashboard')
@@ -29,6 +49,16 @@ app.use('/api/audience', audienceRoutes);
 app.use('/api/fraud', fraudRoutes);
 app.use('/api/insights', insightsRoutes);
 app.use('/api/geo', geoRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/campaign-manager', campaignManagerRoutes);
+app.use('/api/creatives', creativesRoutes);
+app.use('/api/upload', uploadRoutes);
+app.use('/api/publish', publishRoutes);
+app.use('/api/budget', budgetRoutes);
+app.use('/api/triggers', triggersRoutes);
+app.use('/api/cro', croRoutes);
+app.use('/api/retargeting', retargetingRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

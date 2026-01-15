@@ -1,0 +1,222 @@
+{
+    "name": "LUMU Smart Retargeting",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "lumu-retarget",
+                "options": {}
+            },
+            "id": "webhook",
+            "name": "Retarget Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                220,
+                400
+            ],
+            "webhookId": "lumu-retarget"
+        },
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hoursInterval": 12
+                        }
+                    ]
+                }
+            },
+            "id": "schedule",
+            "name": "Check Every 12h",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                220,
+                600
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/audience/segments",
+                "options": {}
+            },
+            "id": "fetch-segments",
+            "name": "Fetch Audience Segments",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                480,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const segments = $input.first().json || [];\nconst actions = [];\n\nfor (const segment of segments) {\n  let action = { segment: segment.name, users: segment.users };\n  \n  if (segment.name === 'Cart Abandoners') {\n    action.campaign = 'Retarget with 10% discount';\n    action.priority = 'HIGH';\n    action.message = '🛒 Items waiting in cart! Use code SAVE10';\n  } else if (segment.name === 'High-Value Buyers') {\n    action.campaign = 'VIP exclusive offers';\n    action.priority = 'MEDIUM';\n    action.message = '⭐ Exclusive deals for VIP customers';\n  } else if (segment.name === 'New Visitors') {\n    action.campaign = 'Welcome offer campaign';\n    action.priority = 'MEDIUM';\n    action.message = '👋 Welcome! First order discount inside';\n  } else if (segment.name === 'Returning Customers') {\n    action.campaign = 'Loyalty rewards';\n    action.priority = 'LOW';\n    action.message = '💝 Thank you! Special reward for you';\n  } else {\n    action.campaign = 'General awareness';\n    action.priority = 'LOW';\n    action.message = '🛍️ Check out new arrivals';\n  }\n  actions.push(action);\n}\n\nreturn [{ json: { timestamp: new Date().toISOString(), segments: actions, total: actions.reduce((s, a) => s + (a.users || 0), 0) }}];"
+            },
+            "id": "analyze",
+            "name": "Analyze Segments",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                720,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "conditions": [
+                        {
+                            "leftValue": "={{ $json.segments.length }}",
+                            "rightValue": 0,
+                            "operator": {
+                                "type": "number",
+                                "operation": "gt"
+                            }
+                        }
+                    ]
+                }
+            },
+            "id": "has-segments",
+            "name": "Has Segments?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                960,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "channel": "={{ $env.SLACK_CHANNEL || '#retargeting' }}",
+                "text": "=🎯 LUMU RETARGETING UPDATE\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📅 {{ new Date().toLocaleDateString() }}\n👥 Total Users: {{ $json.total.toLocaleString() }}\n\n📊 SEGMENTS:\n{{ $json.segments.map(s => `• ${s.segment} (${s.users} users)\\n  Campaign: ${s.campaign}\\n  Priority: ${s.priority}`).join('\\n\\n') }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLUMU Smart Retargeting",
+                "otherOptions": {}
+            },
+            "id": "slack",
+            "name": "Send Slack",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2.2,
+            "position": [
+                1200,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+                "text": "=🎯 Retargeting: {{ $json.total }} users across {{ $json.segments.length }} segments",
+                "additionalFields": {}
+            },
+            "id": "telegram",
+            "name": "Send Telegram",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                1200,
+                600
+            ]
+        },
+        {
+            "parameters": {},
+            "id": "noop",
+            "name": "No Segments",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                1200,
+                800
+            ]
+        }
+    ],
+    "connections": {
+        "Retarget Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Audience Segments",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Check Every 12h": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Audience Segments",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Audience Segments": {
+            "main": [
+                [
+                    {
+                        "node": "Analyze Segments",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Analyze Segments": {
+            "main": [
+                [
+                    {
+                        "node": "Has Segments?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has Segments?": {
+            "main": [
+                [
+                    {
+                        "node": "Send Slack",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "No Segments",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send Slack": {
+            "main": [
+                [
+                    {
+                        "node": "Send Telegram",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": [
+        {
+            "name": "LUMU"
+        },
+        {
+            "name": "Retargeting"
+        },
+        {
+            "name": "Lifecycle"
+        }
+    ]
+}

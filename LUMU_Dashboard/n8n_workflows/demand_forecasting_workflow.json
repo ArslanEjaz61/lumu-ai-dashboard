@@ -1,0 +1,140 @@
+{
+    "name": "LUMU Demand Forecasting",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "weeks",
+                            "weeksInterval": 1
+                        }
+                    ]
+                }
+            },
+            "id": "weekly-trigger",
+            "name": "Weekly Forecast",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                220,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "lumu-demand-forecast",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Manual Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                220,
+                600
+            ],
+            "webhookId": "lumu-demand-forecast"
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/campaigns/all",
+                "options": {}
+            },
+            "id": "fetch-campaigns",
+            "name": "Fetch Campaigns",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                480,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const campaigns = $input.first().json;\nconst now = new Date();\nconst month = now.getMonth() + 1;\nconst day = now.getDate();\n\nlet demandMultiplier = 1.0;\nlet events = [];\n\n// Salary cycle (1st-7th high spending)\nif (day <= 7) { demandMultiplier += 0.3; events.push('💰 Salary Week'); }\n\n// Pakistani events\nif (month === 3 || month === 4) { demandMultiplier += 0.4; events.push('🌙 Ramadan'); }\nif (month === 5) { demandMultiplier += 0.6; events.push('🎉 Eid ul Fitr'); }\nif (month === 7) { demandMultiplier += 0.5; events.push('🐄 Eid ul Adha'); }\nif (month >= 10 || month <= 2) { demandMultiplier += 0.35; events.push('💒 Wedding Season'); }\nif (month >= 6 && month <= 8) { demandMultiplier += 0.25; events.push('☀️ Summer'); }\n\nconst all = [...(campaigns.meta || []), ...(campaigns.google || [])];\nconst revenue = all.reduce((s, c) => s + (c.revenue || 0), 0);\nconst conversions = all.reduce((s, c) => s + (c.conversions || 0), 0);\n\nreturn [{ json: {\n  date: now.toISOString(),\n  demandMultiplier: demandMultiplier.toFixed(2),\n  events: events.length > 0 ? events : ['Normal period'],\n  current: { revenue: `PKR ${(revenue/1000).toFixed(0)}K`, conversions },\n  forecast: { \n    revenue: `PKR ${(revenue * demandMultiplier / 1000).toFixed(0)}K`,\n    growth: `+${((demandMultiplier-1)*100).toFixed(0)}%`\n  },\n  budgetRecommendation: `Increase by ${((demandMultiplier-1)*100).toFixed(0)}%`\n}}];"
+            },
+            "id": "forecast",
+            "name": "Calculate Forecast",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                720,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "channel": "={{ $env.SLACK_CHANNEL || '#demand-planning' }}",
+                "text": "=📊 LUMU DEMAND FORECAST\n━━━━━━━━━━━━━━━━━━━━━━━━\n📅 {{ new Date().toLocaleDateString() }}\n\n📈 Demand Multiplier: {{ $json.demandMultiplier }}x\n\n🎪 Active Events:\n{{ $json.events.join('\\n') }}\n\n💰 Current: {{ $json.current.revenue }}\n🔮 Forecast: {{ $json.forecast.revenue }} ({{ $json.forecast.growth }})\n\n✅ Budget: {{ $json.budgetRecommendation }}",
+                "otherOptions": {}
+            },
+            "id": "send-slack",
+            "name": "Send Slack",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2.2,
+            "position": [
+                960,
+                500
+            ]
+        }
+    ],
+    "connections": {
+        "Weekly Forecast": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Campaigns",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Manual Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Campaigns",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Campaigns": {
+            "main": [
+                [
+                    {
+                        "node": "Calculate Forecast",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Calculate Forecast": {
+            "main": [
+                [
+                    {
+                        "node": "Send Slack",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": [
+        {
+            "name": "LUMU"
+        },
+        {
+            "name": "Forecasting"
+        }
+    ]
+}

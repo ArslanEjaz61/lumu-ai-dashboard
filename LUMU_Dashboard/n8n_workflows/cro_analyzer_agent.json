@@ -1,0 +1,292 @@
+{
+    "name": "LUMU CRO Analyzer Agent",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hoursInterval": 6
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger",
+            "name": "Every 6 Hours",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                220,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/cro/funnel",
+                "options": {}
+            },
+            "id": "fetch-funnel",
+            "name": "Fetch Funnel Data",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                440,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/cro/pages",
+                "options": {}
+            },
+            "id": "fetch-pages",
+            "name": "Fetch Page Performance",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                440,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const funnelData = $('Fetch Funnel Data').first().json;\nconst pageData = $('Fetch Page Performance').first().json;\n\nconst alerts = [];\n\n// Analyze funnel drop-offs\nconst funnel = funnelData.funnel || [];\nfor (let i = 1; i < funnel.length; i++) {\n  const prev = funnel[i - 1];\n  const curr = funnel[i];\n  const dropRate = ((prev.value - curr.value) / prev.value) * 100;\n  \n  if (dropRate > 60) {\n    alerts.push({\n      type: 'funnel_alert',\n      stage: `${prev.name} → ${curr.name}`,\n      dropRate: dropRate.toFixed(1),\n      severity: dropRate > 70 ? 'critical' : 'warning',\n      suggestion: getDropSuggestion(prev.name, curr.name),\n      potentialRevenue: calculateLostRevenue(prev.value - curr.value)\n    });\n  }\n}\n\n// Analyze bounce rates\nconst pages = pageData.pages || [];\nfor (const page of pages) {\n  if (page.bounceRate > 50) {\n    alerts.push({\n      type: 'bounce_alert',\n      page: page.page,\n      bounceRate: page.bounceRate,\n      severity: page.bounceRate > 60 ? 'critical' : 'warning',\n      suggestion: `Optimize ${page.page} page - high bounce rate`,\n      avgTime: page.avgTime\n    });\n  }\n}\n\nfunction getDropSuggestion(from, to) {\n  const suggestions = {\n    'Page Views_Product Views': 'Improve product visibility and navigation',\n    'Product Views_Add to Cart': 'Add prominent CTA button, show urgency',\n    'Add to Cart_Checkout': 'Show free shipping threshold, simplify cart',\n    'Checkout_Purchase': 'Add more payment options, reduce form fields'\n  };\n  return suggestions[`${from}_${to}`] || 'Analyze user behavior and optimize flow';\n}\n\nfunction calculateLostRevenue(lostUsers) {\n  const avgOrderValue = 4500;\n  const estimatedConversionRate = 0.025;\n  return (lostUsers * estimatedConversionRate * avgOrderValue).toLocaleString();\n}\n\nreturn alerts.map(a => ({ json: a }));"
+            },
+            "id": "analyze-cro",
+            "name": "AI Analyze CRO",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                700,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "has-alerts",
+                            "leftValue": "={{ $input.all().length }}",
+                            "rightValue": 0,
+                            "operator": {
+                                "type": "number",
+                                "operation": "gt"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "has-alerts",
+            "name": "Has CRO Issues?",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                940,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "alert-message",
+                            "name": "alertMessage",
+                            "value": "=🎯 LUMU CRO ANALYZER AGENT\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n{{ $json.type === 'funnel_alert' ? '📊 FUNNEL DROP DETECTED' : '🚨 HIGH BOUNCE RATE' }}\n\n{{ $json.type === 'funnel_alert' ? '📍 Stage: ' + $json.stage : '📍 Page: ' + $json.page }}\n{{ $json.type === 'funnel_alert' ? '📉 Drop Rate: ' + $json.dropRate + '%' : '📉 Bounce Rate: ' + $json.bounceRate + '%' }}\n⚠️ Severity: {{ $json.severity.toUpperCase() }}\n\n💡 AI Suggestion:\n{{ $json.suggestion }}\n\n{{ $json.potentialRevenue ? '💰 Potential Revenue: PKR ' + $json.potentialRevenue : '' }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLUMU AI Dashboard",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "format-message",
+            "name": "Format CRO Alert",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                1180,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+                "text": "={{ $json.alertMessage }}",
+                "additionalFields": {}
+            },
+            "id": "send-telegram",
+            "name": "Send to Telegram",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                1420,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/insights",
+                "method": "POST",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "type",
+                            "value": "cro_alert"
+                        },
+                        {
+                            "name": "message",
+                            "value": "={{ $json.suggestion }}"
+                        },
+                        {
+                            "name": "severity",
+                            "value": "={{ $json.severity }}"
+                        },
+                        {
+                            "name": "source",
+                            "value": "cro-analyzer-agent"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "log-insight",
+            "name": "Log to Insights API",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1420,
+                500
+            ]
+        },
+        {
+            "parameters": {},
+            "id": "no-action",
+            "name": "All Good",
+            "type": "n8n-nodes-base.noOp",
+            "typeVersion": 1,
+            "position": [
+                1180,
+                500
+            ]
+        }
+    ],
+    "connections": {
+        "Every 6 Hours": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Funnel Data",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Fetch Page Performance",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Funnel Data": {
+            "main": [
+                [
+                    {
+                        "node": "AI Analyze CRO",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Page Performance": {
+            "main": [
+                [
+                    {
+                        "node": "AI Analyze CRO",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Analyze CRO": {
+            "main": [
+                [
+                    {
+                        "node": "Has CRO Issues?",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Has CRO Issues?": {
+            "main": [
+                [
+                    {
+                        "node": "Format CRO Alert",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "All Good",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format CRO Alert": {
+            "main": [
+                [
+                    {
+                        "node": "Send to Telegram",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Log to Insights API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "name": "LUMU",
+            "createdAt": "2026-01-10T00:00:00.000Z",
+            "updatedAt": "2026-01-10T00:00:00.000Z"
+        },
+        {
+            "name": "AI Agent",
+            "createdAt": "2026-01-10T00:00:00.000Z",
+            "updatedAt": "2026-01-10T00:00:00.000Z"
+        },
+        {
+            "name": "CRO",
+            "createdAt": "2026-01-10T00:00:00.000Z",
+            "updatedAt": "2026-01-10T00:00:00.000Z"
+        }
+    ],
+    "triggerCount": 1,
+    "updatedAt": "2026-01-10T00:00:00.000Z",
+    "versionId": "1"
+}

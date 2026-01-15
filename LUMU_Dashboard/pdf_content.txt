@@ -60,6 +60,7 @@ Weather & Context-Based Advertising
 AI-triggered ad adjustments based on:
 • Weather conditions (heat, rain, winter)
 • Seasonal needs (Ramadan, Eid, wedding season, monsoon)
+
 • Product and creative alignment with real-time context.
 Additional Measures the AI Agency to Include
 Predictive Demand Forecasting

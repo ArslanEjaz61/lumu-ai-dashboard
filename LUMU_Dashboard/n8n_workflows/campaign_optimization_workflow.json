@@ -1,0 +1,299 @@
+{
+    "name": "LUMU AI Campaign Optimization",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "hours",
+                            "hoursInterval": 24
+                        }
+                    ]
+                }
+            },
+            "id": "daily-trigger",
+            "name": "Daily Analysis",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.2,
+            "position": [
+                220,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "lumu-optimize-campaigns",
+                "options": {}
+            },
+            "id": "webhook-trigger",
+            "name": "Manual Optimization Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                220,
+                500
+            ],
+            "webhookId": "lumu-optimize-campaigns"
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/campaigns/all",
+                "options": {}
+            },
+            "id": "fetch-campaigns",
+            "name": "Fetch All Campaigns",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                480,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/analytics/overview",
+                "options": {}
+            },
+            "id": "fetch-analytics",
+            "name": "Fetch Analytics",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                480,
+                560
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "const campaigns = $('Fetch All Campaigns').first().json;\nconst analytics = $('Fetch Analytics').first().json;\n\nconst allCampaigns = [\n  ...(campaigns.meta || []).map(c => ({ ...c, platform: 'Meta' })),\n  ...(campaigns.google || []).map(c => ({ ...c, platform: 'Google' }))\n];\n\n// Categorize campaigns by performance\nconst highPerformers = allCampaigns.filter(c => c.roas >= 3.5);\nconst mediumPerformers = allCampaigns.filter(c => c.roas >= 2 && c.roas < 3.5);\nconst lowPerformers = allCampaigns.filter(c => c.roas < 2);\n\n// Calculate totals\nconst totalSpend = allCampaigns.reduce((sum, c) => sum + c.spend, 0);\nconst totalRevenue = allCampaigns.reduce((sum, c) => sum + c.revenue, 0);\nconst avgROAS = totalSpend > 0 ? (totalRevenue / totalSpend) : 0;\n\n// Generate AI analysis context\nconst performanceData = {\n  summary: {\n    totalCampaigns: allCampaigns.length,\n    totalSpend: totalSpend,\n    totalRevenue: totalRevenue,\n    avgROAS: avgROAS.toFixed(2),\n    highPerformers: highPerformers.length,\n    mediumPerformers: mediumPerformers.length,\n    lowPerformers: lowPerformers.length\n  },\n  campaigns: allCampaigns.map(c => ({\n    name: c.name,\n    platform: c.platform,\n    type: c.type || c.objective,\n    spend: c.spend,\n    revenue: c.revenue,\n    roas: c.roas,\n    ctr: c.ctr,\n    cpc: c.cpc,\n    conversions: c.conversions\n  })),\n  lowPerformersList: lowPerformers.map(c => c.name).join(', '),\n  highPerformersList: highPerformers.map(c => `${c.name} (${c.roas}x)`).join(', '),\n  analytics: analytics\n};\n\nreturn [{ json: performanceData }];"
+            },
+            "id": "prepare-data",
+            "name": "Prepare Campaign Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                740,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "model": "gpt-4",
+                "messages": {
+                    "values": [
+                        {
+                            "content": "=You are an expert digital marketing AI assistant for LUMU, Pakistan's premier e-commerce marketplace. Analyze the following campaign performance data and provide specific, actionable optimization recommendations.\n\nCampaign Performance Data:\n{{ JSON.stringify($json, null, 2) }}\n\nProvide your analysis in this format:\n\n🎯 OVERALL ASSESSMENT\n[Brief 2-3 sentence overview]\n\n📈 TOP PERFORMERS (Increase Budget)\n[List campaigns that deserve more budget with specific recommendations]\n\n📉 UNDERPERFORMERS (Optimize or Pause)\n[List campaigns that need attention with specific actions]\n\n💡 BUDGET REALLOCATION\n[Specific budget shift recommendations]\n\n🔧 QUICK WINS\n[3-5 immediate actions that can improve ROAS]\n\n📊 PLATFORM INSIGHTS\n[Meta vs Google comparison and recommendations]\n\nKeep responses concise and actionable. Use Pakistani Rupees (PKR) for currency. Focus on Pakistan market context (Karachi, Lahore, Islamabad markets, mobile-first users, Android-heavy audience)."
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "ai-analysis",
+            "name": "AI Campaign Analysis",
+            "type": "@n8n/n8n-nodes-langchain.openAi",
+            "typeVersion": 1.4,
+            "position": [
+                1000,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "report",
+                            "name": "optimizationReport",
+                            "value": "=🤖 LUMU AI CAMPAIGN OPTIMIZER\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n📅 {{ new Date().toLocaleDateString('en-PK') }}\n\n📊 CURRENT PERFORMANCE SNAPSHOT\n• Total Campaigns: {{ $json.summary.totalCampaigns }}\n• Total Spend: PKR {{ ($json.summary.totalSpend / 1000).toFixed(0) }}K\n• Total Revenue: PKR {{ ($json.summary.totalRevenue / 1000).toFixed(0) }}K\n• Average ROAS: {{ $json.summary.avgROAS }}x\n• High Performers: {{ $json.summary.highPerformers }}\n• Needs Attention: {{ $json.summary.lowPerformers }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n🏆 TOP PERFORMERS:\n{{ $json.highPerformersList }}\n\n⚠️ LOW PERFORMERS:\n{{ $json.lowPerformersList }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "format-report",
+            "name": "Format Base Report",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                1260,
+                400
+            ]
+        },
+        {
+            "parameters": {
+                "channel": "={{ $env.SLACK_MARKETING_CHANNEL || '#marketing-ai' }}",
+                "text": "={{ $json.optimizationReport }}\n\n🤖 AI RECOMMENDATIONS:\n{{ $('AI Campaign Analysis').first().json.text || $('AI Campaign Analysis').first().json.message?.content || 'AI analysis pending...' }}",
+                "otherOptions": {}
+            },
+            "id": "send-slack",
+            "name": "Send to Slack",
+            "type": "n8n-nodes-base.slack",
+            "typeVersion": 2.2,
+            "position": [
+                1520,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $env.MARKETING_EMAIL || 'marketing@lumu.pk' }}",
+                "subject": "=🤖 LUMU AI Campaign Optimization Report - {{ new Date().toLocaleDateString('en-PK') }}",
+                "emailType": "text",
+                "message": "={{ $json.optimizationReport }}\n\n🤖 AI RECOMMENDATIONS:\n{{ $('AI Campaign Analysis').first().json.text || $('AI Campaign Analysis').first().json.message?.content || 'AI analysis pending...' }}",
+                "options": {}
+            },
+            "id": "send-email",
+            "name": "Send Email Report",
+            "type": "n8n-nodes-base.emailSend",
+            "typeVersion": 2.1,
+            "position": [
+                1520,
+                500
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": {
+                    "__rl": true,
+                    "value": "={{ $env.OPTIMIZATION_SHEET_ID }}",
+                    "mode": "id"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": "AI Recommendations",
+                    "mode": "name"
+                },
+                "columns": {
+                    "mappingMode": "autoMapInputData",
+                    "value": {}
+                },
+                "options": {}
+            },
+            "id": "log-sheet",
+            "name": "Log to Google Sheets",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.5,
+            "position": [
+                1520,
+                700
+            ]
+        }
+    ],
+    "connections": {
+        "Daily Analysis": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch All Campaigns",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Manual Optimization Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch All Campaigns",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch All Campaigns": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Analytics",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Analytics": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Campaign Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Campaign Data": {
+            "main": [
+                [
+                    {
+                        "node": "AI Campaign Analysis",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Campaign Analysis": {
+            "main": [
+                [
+                    {
+                        "node": "Format Base Report",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Base Report": {
+            "main": [
+                [
+                    {
+                        "node": "Send to Slack",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Send Email Report",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Log to Google Sheets",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "name": "LUMU",
+            "createdAt": "2025-01-09T00:00:00.000Z",
+            "updatedAt": "2025-01-09T00:00:00.000Z"
+        },
+        {
+            "name": "AI",
+            "createdAt": "2025-01-09T00:00:00.000Z",
+            "updatedAt": "2025-01-09T00:00:00.000Z"
+        },
+        {
+            "name": "Optimization",
+            "createdAt": "2025-01-09T00:00:00.000Z",
+            "updatedAt": "2025-01-09T00:00:00.000Z"
+        }
+    ],
+    "triggerCount": 2,
+    "updatedAt": "2025-01-09T00:00:00.000Z",
+    "versionId": "1"
+}

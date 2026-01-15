@@ -1,0 +1,396 @@
+{
+    "name": "LUMU Publish Ads Agent",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "lumu-publish-ad",
+                "options": {}
+            },
+            "id": "webhook-publish",
+            "name": "Publish Ad Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                220,
+                300
+            ],
+            "webhookId": "lumu-publish-ad"
+        },
+        {
+            "parameters": {
+                "jsCode": "const input = $input.first().json;\n\nconst platforms = input.platforms || [];\nconst budget = input.budget || {};\nconst targeting = input.targeting || {};\nconst creative = input.creative || {};\nconst schedule = input.schedule || { mode: 'now' };\n\nconst publishActions = [];\n\nfor (const platform of platforms) {\n  publishActions.push({\n    platform: platform,\n    action: schedule.mode === 'now' ? 'publish_immediate' : 'schedule',\n    scheduledFor: schedule.mode === 'schedule' ? `${schedule.date} ${schedule.time}` : 'NOW',\n    budget: {\n      daily: budget.daily || 0,\n      total: budget.total || 0\n    },\n    targeting: {\n      ageMin: targeting.ageMin || 18,\n      ageMax: targeting.ageMax || 55,\n      gender: targeting.gender || 'all',\n      cities: targeting.cities || ['Karachi', 'Lahore']\n    },\n    creative: {\n      headline: creative.headline || 'Default Headline',\n      description: creative.description || 'Default Description',\n      image: creative.image || 'default.jpg'\n    },\n    status: 'pending'\n  });\n}\n\nreturn publishActions.map(a => ({ json: a }));"
+            },
+            "id": "prepare-publish",
+            "name": "Prepare Publish Actions",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                460,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "is-facebook",
+                            "leftValue": "={{ $json.platform }}",
+                            "rightValue": "facebook",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "check-platform",
+            "name": "Platform Router",
+            "type": "n8n-nodes-base.switch",
+            "typeVersion": 3.2,
+            "position": [
+                700,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://graph.facebook.com/v18.0/act_{{ $env.META_AD_ACCOUNT_ID }}/ads",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "name",
+                            "value": "={{ $json.creative.headline }}"
+                        },
+                        {
+                            "name": "adset_id",
+                            "value": "={{ $env.META_ADSET_ID }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "={{ $json.action === 'publish_immediate' ? 'ACTIVE' : 'PAUSED' }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "publish-facebook",
+            "name": "Publish to Facebook",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                940,
+                180
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://googleads.googleapis.com/v15/customers/{{ $env.GOOGLE_ADS_CUSTOMER_ID }}/campaigns",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "name",
+                            "value": "={{ $json.creative.headline }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "={{ $json.action === 'publish_immediate' ? 'ENABLED' : 'PAUSED' }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "publish-google",
+            "name": "Publish to Google Ads",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                940,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://graph.facebook.com/v18.0/act_{{ $env.META_AD_ACCOUNT_ID }}/ads",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "name",
+                            "value": "={{ $json.creative.headline }} - Instagram"
+                        },
+                        {
+                            "name": "status",
+                            "value": "={{ $json.action === 'publish_immediate' ? 'ACTIVE' : 'PAUSED' }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "publish-instagram",
+            "name": "Publish to Instagram",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                940,
+                420
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://www.googleapis.com/youtube/v3/videoCampaigns",
+                "method": "POST",
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "name",
+                            "value": "={{ $json.creative.headline }} - YouTube"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "publish-youtube",
+            "name": "Publish to YouTube",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                940,
+                540
+            ]
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "success-message",
+                            "name": "successMessage",
+                            "value": "=🚀 LUMU PUBLISH AGENT\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n✅ AD PUBLISHED SUCCESSFULLY!\n\n📢 Platform: {{ $json.platform.toUpperCase() }}\n📅 Mode: {{ $json.action === 'publish_immediate' ? 'Published Now' : 'Scheduled for ' + $json.scheduledFor }}\n\n💰 Budget:\n• Daily: PKR {{ $json.budget.daily.toLocaleString() }}\n• Total: PKR {{ $json.budget.total.toLocaleString() }}\n\n🎯 Targeting:\n• Age: {{ $json.targeting.ageMin }}-{{ $json.targeting.ageMax }}\n• Gender: {{ $json.targeting.gender }}\n• Cities: {{ $json.targeting.cities.join(', ') }}\n\n📝 Creative:\n• Headline: {{ $json.creative.headline }}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nLUMU AI Dashboard",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "format-success",
+            "name": "Format Success Message",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                1200,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+                "text": "={{ $json.successMessage }}",
+                "additionalFields": {}
+            },
+            "id": "send-telegram",
+            "name": "Notify via Telegram",
+            "type": "n8n-nodes-base.telegram",
+            "typeVersion": 1.2,
+            "position": [
+                1440,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "http://localhost:5000/api/publish/history",
+                "method": "POST",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "platform",
+                            "value": "={{ $json.platform }}"
+                        },
+                        {
+                            "name": "status",
+                            "value": "published"
+                        },
+                        {
+                            "name": "publishedAt",
+                            "value": "={{ new Date().toISOString() }}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "log-publish",
+            "name": "Log to History",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1440,
+                500
+            ]
+        }
+    ],
+    "connections": {
+        "Publish Ad Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Publish Actions",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Publish Actions": {
+            "main": [
+                [
+                    {
+                        "node": "Platform Router",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Platform Router": {
+            "main": [
+                [
+                    {
+                        "node": "Publish to Facebook",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Publish to Google Ads",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Publish to Instagram",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Publish to YouTube",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Publish to Facebook": {
+            "main": [
+                [
+                    {
+                        "node": "Format Success Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Publish to Google Ads": {
+            "main": [
+                [
+                    {
+                        "node": "Format Success Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Publish to Instagram": {
+            "main": [
+                [
+                    {
+                        "node": "Format Success Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Publish to YouTube": {
+            "main": [
+                [
+                    {
+                        "node": "Format Success Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Success Message": {
+            "main": [
+                [
+                    {
+                        "node": "Notify via Telegram",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Log to History",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [
+        {
+            "name": "LUMU",
+            "createdAt": "2026-01-10T00:00:00.000Z",
+            "updatedAt": "2026-01-10T00:00:00.000Z"
+        },
+        {
+            "name": "AI Agent",
+            "createdAt": "2026-01-10T00:00:00.000Z",
+            "updatedAt": "2026-01-10T00:00:00.000Z"
+        },
+        {
+            "name": "Publish",
+            "createdAt": "2026-01-10T00:00:00.000Z",
+            "updatedAt": "2026-01-10T00:00:00.000Z"
+        }
+    ],
+    "triggerCount": 1,
+    "updatedAt": "2026-01-10T00:00:00.000Z",
+    "versionId": "1"
+}
