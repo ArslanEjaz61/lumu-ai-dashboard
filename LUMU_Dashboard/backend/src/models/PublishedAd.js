@@ -21,7 +21,7 @@ const publishedAdSchema = new mongoose.Schema({
     // Platforms
     platforms: [{
         type: String,
-        enum: ['facebook', 'instagram', 'google', 'youtube', 'tiktok']
+        enum: ['facebook', 'instagram', 'google', 'youtube', 'tiktok', 'twitter']
     }],
     platformCampaignIds: [{
         platform: String,
@@ -54,6 +54,11 @@ const publishedAdSchema = new mongoose.Schema({
             type: [String],
             enum: ['for_you', 'following', 'search'],
             default: ['for_you']
+        },
+        twitter: {
+            type: [String],
+            enum: ['timeline', 'profile', 'search', 'replies'],
+            default: ['timeline']
         }
     },
 
@@ -78,7 +83,7 @@ const publishedAdSchema = new mongoose.Schema({
         thumbnailUrl: String,                                  // Video thumbnail
         cta: {
             type: String,
-            enum: ['shop_now', 'learn_more', 'sign_up', 'book_now', 'contact_us', 'download', 'get_offer', 'order_now', 'subscribe', 'watch_more'],
+            enum: ['shop_now', 'Shop Now', 'learn_more', 'Learn More', 'sign_up', 'Sign Up', 'book_now', 'Book Now', 'contact_us', 'Contact Us', 'download', 'Download', 'get_offer', 'Get Offer', 'order_now', 'Order Now', 'subscribe', 'Subscribe', 'watch_more', 'Watch More', 'apply_now', 'Apply Now', 'buy_now', 'Buy Now'],
             default: 'shop_now'
         },
         // Carousel items (if carousel format)
@@ -90,19 +95,19 @@ const publishedAdSchema = new mongoose.Schema({
         }]
     },
 
-    // Destination URL (REQUIRED for all platforms)
+    // Destination URL
     linkUrl: {
         type: String,
-        required: true
+        default: ''
     },
     displayUrl: String,        // Shown URL (for Google Ads)
     deepLink: String,          // App deep link (optional)
 
-    // Tracking
     tracking: {
         facebookPixelId: String,
         googleConversionId: String,
         tiktokPixelId: String,
+        twitterPixelId: String,
         utmSource: String,
         utmMedium: String,
         utmCampaign: String,

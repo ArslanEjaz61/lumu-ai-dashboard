@@ -48,7 +48,7 @@ const CampaignSchema = new mongoose.Schema({
     // Platforms
     platforms: [{
         type: String,
-        enum: ['facebook', 'instagram', 'google', 'youtube', 'tiktok']
+        enum: ['facebook', 'instagram', 'google', 'youtube', 'tiktok', 'twitter']
     }],
 
     // Ad Placements per platform
@@ -72,6 +72,11 @@ const CampaignSchema = new mongoose.Schema({
             type: [String],
             enum: ['for_you', 'following', 'search'],
             default: ['for_you']
+        },
+        twitter: {
+            type: [String],
+            enum: ['timeline', 'profile', 'search', 'replies'],
+            default: ['timeline']
         }
     },
 
@@ -124,11 +129,11 @@ const CampaignSchema = new mongoose.Schema({
         languages: { type: [String], default: ['en', 'ur'] }
     },
 
-    // Tracking Pixels
     tracking: {
         facebookPixelId: String,
         googleConversionId: String,
         tiktokPixelId: String,
+        twitterPixelId: String,
         utmSource: String,
         utmMedium: String,
         utmCampaign: String

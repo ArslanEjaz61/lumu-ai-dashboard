@@ -17,6 +17,7 @@ import {
     Palette,
     Users,
     Edit2,
+    ChevronDown,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { api, SettingsData, UserData } from "@/lib/api";
@@ -28,6 +29,7 @@ export default function SettingsPage() {
     const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
     const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
     const [activeTab, setActiveTab] = useState<'api' | 'branding' | 'users'>('api');
+    const [expandedPlatform, setExpandedPlatform] = useState<string | null>(null);
 
     // Form states
     const [googleAds, setGoogleAds] = useState({
@@ -41,6 +43,21 @@ export default function SettingsPage() {
         appId: '',
         appSecret: '',
         accessToken: '',
+        adAccountId: '',
+        pageId: '',
+    });
+    const [tiktokAds, setTiktokAds] = useState({
+        appId: '',
+        appSecret: '',
+        accessToken: '',
+        advertiserId: '',
+        businessCenterId: '',
+    });
+    const [twitterAds, setTwitterAds] = useState({
+        apiKey: '',
+        apiSecret: '',
+        accessToken: '',
+        accessTokenSecret: '',
         adAccountId: '',
     });
     const [openai, setOpenai] = useState({ apiKey: '' });
@@ -85,14 +102,29 @@ export default function SettingsPage() {
                 customerId: data.googleAds.customerId,
             });
             setMetaAds({
-                appId: data.metaAds.appId,
-                appSecret: data.metaAds.appSecret,
-                accessToken: data.metaAds.accessToken,
-                adAccountId: data.metaAds.adAccountId,
+                appId: data.metaAds?.appId || '',
+                appSecret: data.metaAds?.appSecret || '',
+                accessToken: data.metaAds?.accessToken || '',
+                adAccountId: data.metaAds?.adAccountId || '',
+                pageId: data.metaAds?.pageId || '',
             });
-            setOpenai({ apiKey: data.openai.apiKey });
-            setClickCease({ apiKey: data.clickCease.apiKey, domain: data.clickCease.domain });
-            setGa4({ propertyId: data.ga4.propertyId, accessToken: data.ga4.accessToken });
+            setTiktokAds({
+                appId: data.tiktokAds?.appId || '',
+                appSecret: data.tiktokAds?.appSecret || '',
+                accessToken: data.tiktokAds?.accessToken || '',
+                advertiserId: data.tiktokAds?.advertiserId || '',
+                businessCenterId: data.tiktokAds?.businessCenterId || '',
+            });
+            setTwitterAds({
+                apiKey: data.twitterAds?.apiKey || '',
+                apiSecret: data.twitterAds?.apiSecret || '',
+                accessToken: data.twitterAds?.accessToken || '',
+                accessTokenSecret: data.twitterAds?.accessTokenSecret || '',
+                adAccountId: data.twitterAds?.adAccountId || '',
+            });
+            setOpenai({ apiKey: data.openai?.apiKey || '' });
+            setClickCease({ apiKey: data.clickCease?.apiKey || '', domain: data.clickCease?.domain || '' });
+            setGa4({ propertyId: data.ga4?.propertyId || '', accessToken: data.ga4?.accessToken || '' });
             if (data.branding) {
                 setBranding(data.branding);
             }
@@ -110,6 +142,8 @@ export default function SettingsPage() {
             await api.updateSettings({
                 googleAds: { ...googleAds, connected: false },
                 metaAds: { ...metaAds, connected: false },
+                tiktokAds: { ...tiktokAds, connected: false },
+                twitterAds: { ...twitterAds, connected: false },
                 openai: { ...openai, connected: false },
                 clickCease: { ...clickCease, connected: false },
                 ga4: { ...ga4, connected: false },
@@ -277,188 +311,276 @@ export default function SettingsPage() {
 
             {/* API Credentials Tab */}
             {activeTab === 'api' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Google Ads */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center justify-between">
-                                <span className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded bg-emerald-100 flex items-center justify-center">
-                                        <span className="text-emerald-600 font-bold text-sm">G</span>
-                                    </div>
-                                    Google Ads
-                                </span>
-                                <Badge variant="outline" className={settings?.googleAds.connected ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-600"}>
-                                    {settings?.googleAds.connected ? <><CheckCircle size={12} className="mr-1" /> Connected</> : <><AlertCircle size={12} className="mr-1" /> Not Connected</>}
-                                </Badge>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <InputField label="Customer ID" value={googleAds.customerId} onChange={(v) => setGoogleAds({ ...googleAds, customerId: v })} placeholder="xxx-xxx-xxxx" />
-                            <InputField label="Developer Token" value={googleAds.developerToken} onChange={(v) => setGoogleAds({ ...googleAds, developerToken: v })} secretKey="googleDev" placeholder="Enter developer token" />
-                            <InputField label="Client ID" value={googleAds.clientId} onChange={(v) => setGoogleAds({ ...googleAds, clientId: v })} placeholder="OAuth Client ID" />
-                            <InputField label="Client Secret" value={googleAds.clientSecret} onChange={(v) => setGoogleAds({ ...googleAds, clientSecret: v })} secretKey="googleSecret" placeholder="OAuth Client Secret" />
-                            <InputField label="Refresh Token" value={googleAds.refreshToken} onChange={(v) => setGoogleAds({ ...googleAds, refreshToken: v })} secretKey="googleRefresh" placeholder="OAuth Refresh Token" />
-                            <div className="flex gap-2 pt-3 border-t mt-3">
-                                <Button variant="outline" size="sm" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">
-                                    <CheckCircle size={14} className="mr-1" /> Test Connection
-                                </Button>
-                                <Button size="sm" onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 ml-auto">
-                                    <Save size={14} className="mr-1" /> Save
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Meta Ads */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center justify-between">
-                                <span className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center">
-                                        <span className="text-blue-600 font-bold text-sm">M</span>
-                                    </div>
-                                    Meta Ads (Facebook/Instagram)
-                                </span>
-                                <Badge variant="outline" className={settings?.metaAds.connected ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-600"}>
-                                    {settings?.metaAds.connected ? <><CheckCircle size={12} className="mr-1" /> Connected</> : <><AlertCircle size={12} className="mr-1" /> Not Connected</>}
-                                </Badge>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <InputField label="Ad Account ID" value={metaAds.adAccountId} onChange={(v) => setMetaAds({ ...metaAds, adAccountId: v })} placeholder="act_xxxxxxxxxx" />
-                            <InputField label="App ID" value={metaAds.appId} onChange={(v) => setMetaAds({ ...metaAds, appId: v })} placeholder="Meta App ID" />
-                            <InputField label="App Secret" value={metaAds.appSecret} onChange={(v) => setMetaAds({ ...metaAds, appSecret: v })} secretKey="metaSecret" placeholder="Meta App Secret" />
-                            <InputField label="Access Token" value={metaAds.accessToken} onChange={(v) => setMetaAds({ ...metaAds, accessToken: v })} secretKey="metaToken" placeholder="Long-lived Access Token" />
-                            <div className="flex gap-2 pt-3 border-t mt-3">
-                                <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50">
-                                    <CheckCircle size={14} className="mr-1" /> Test Connection
-                                </Button>
-                                <Button size="sm" onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700 ml-auto">
-                                    <Save size={14} className="mr-1" /> Save
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* OpenAI */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center justify-between">
-                                <span className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded bg-purple-100 flex items-center justify-center">
-                                        <span className="text-purple-600 font-bold text-sm">AI</span>
-                                    </div>
-                                    OpenAI (AI Features)
-                                </span>
-                                <Badge variant="outline" className={settings?.openai.connected ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-600"}>
-                                    {settings?.openai.connected ? <><CheckCircle size={12} className="mr-1" /> Connected</> : <><AlertCircle size={12} className="mr-1" /> Not Connected</>}
-                                </Badge>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <InputField label="API Key" value={openai.apiKey} onChange={(v) => setOpenai({ apiKey: v })} secretKey="openaiKey" placeholder="sk-xxxxxxxxxxxxxxxx" />
-                            <p className="text-xs text-slate-500">Used for AI campaign optimization and smart recommendations.</p>
-                            <div className="flex gap-2 pt-3 border-t mt-3">
-                                <Button variant="outline" size="sm" className="text-purple-600 border-purple-200 hover:bg-purple-50">
-                                    <CheckCircle size={14} className="mr-1" /> Test Connection
-                                </Button>
-                                <Button size="sm" onClick={handleSave} disabled={saving} className="bg-purple-600 hover:bg-purple-700 ml-auto">
-                                    <Save size={14} className="mr-1" /> Save
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Google Analytics 4 */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center justify-between">
-                                <span className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded bg-orange-100 flex items-center justify-center">
-                                        <span className="text-orange-600 font-bold text-sm">GA</span>
-                                    </div>
-                                    Google Analytics 4
-                                </span>
-                                <Badge variant="outline" className={settings?.ga4.connected ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-600"}>
-                                    {settings?.ga4.connected ? <><CheckCircle size={12} className="mr-1" /> Connected</> : <><AlertCircle size={12} className="mr-1" /> Not Connected</>}
-                                </Badge>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <InputField label="Property ID" value={ga4.propertyId} onChange={(v) => setGa4({ ...ga4, propertyId: v })} placeholder="xxxxxxxxx" />
-                            <InputField label="Access Token" value={ga4.accessToken} onChange={(v) => setGa4({ ...ga4, accessToken: v })} secretKey="ga4Token" placeholder="OAuth Access Token" />
-                            <div className="flex gap-2 pt-3 border-t mt-3">
-                                <Button variant="outline" size="sm" className="text-orange-600 border-orange-200 hover:bg-orange-50">
-                                    <CheckCircle size={14} className="mr-1" /> Test Connection
-                                </Button>
-                                <Button size="sm" onClick={handleSave} disabled={saving} className="bg-orange-600 hover:bg-orange-700 ml-auto">
-                                    <Save size={14} className="mr-1" /> Save
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* ClickCease */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center justify-between">
-                                <span className="flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded bg-red-100 flex items-center justify-center">
-                                        <span className="text-red-600 font-bold text-sm">CC</span>
-                                    </div>
-                                    ClickCease (Fraud Protection)
-                                </span>
-                                <Badge variant="outline" className={settings?.clickCease.connected ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-600"}>
-                                    {settings?.clickCease.connected ? <><CheckCircle size={12} className="mr-1" /> Connected</> : <><AlertCircle size={12} className="mr-1" /> Not Connected</>}
-                                </Badge>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <InputField label="API Key" value={clickCease.apiKey} onChange={(v) => setClickCease({ ...clickCease, apiKey: v })} secretKey="ccKey" placeholder="Your ClickCease API key" />
-                            <InputField label="Domain" value={clickCease.domain} onChange={(v) => setClickCease({ ...clickCease, domain: v })} placeholder="yourdomain.com" />
-                            <div className="flex gap-2 pt-3 border-t mt-3">
-                                <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-50">
-                                    <CheckCircle size={14} className="mr-1" /> Test Connection
-                                </Button>
-                                <Button size="sm" onClick={handleSave} disabled={saving} className="bg-red-600 hover:bg-red-700 ml-auto">
-                                    <Save size={14} className="mr-1" /> Save
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Connection Status */}
-                    <Card>
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Settings size={18} className="text-slate-500" />
-                                Connection Status
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {[
-                                { name: 'Google Ads', connected: settings?.googleAds.connected },
-                                { name: 'Meta Ads', connected: settings?.metaAds.connected },
-                                { name: 'Google Analytics 4', connected: settings?.ga4.connected },
-                                { name: 'ClickCease', connected: settings?.clickCease.connected },
-                                { name: 'OpenAI', connected: settings?.openai.connected },
-                            ].map((item) => (
-                                <div key={item.name} className="flex items-center justify-between p-2 rounded-lg bg-slate-50">
-                                    <span className="text-sm">{item.name}</span>
-                                    {item.connected ? (
-                                        <CheckCircle size={16} className="text-emerald-500" />
-                                    ) : (
-                                        <AlertCircle size={16} className="text-slate-400" />
-                                    )}
+                <div className="space-y-2">
+                    {/* Ad Platforms Header */}
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Ad Platforms</h3>
+                    
+                    {/* Meta Ads Row */}
+                    <div className="border rounded-lg overflow-hidden">
+                        <button
+                            onClick={() => setExpandedPlatform(expandedPlatform === 'meta' ? null : 'meta')}
+                            className="w-full flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-blue-500 flex items-center justify-center">
+                                    <span className="text-white font-bold">M</span>
                                 </div>
-                            ))}
-                            <Button variant="outline" className="w-full mt-4" onClick={fetchSettings}>
-                                <RefreshCw size={14} className="mr-2" />
-                                Refresh Status
-                            </Button>
-                        </CardContent>
-                    </Card>
+                                <div className="text-left">
+                                    <p className="font-semibold text-slate-800">Meta Ads</p>
+                                    <p className="text-sm text-slate-500">Facebook & Instagram</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Badge variant="outline" className={settings?.metaAds?.connected ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-500"}>
+                                    {settings?.metaAds?.connected ? 'Connected' : 'Not Connected'}
+                                </Badge>
+                                <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${expandedPlatform === 'meta' ? 'rotate-180' : ''}`} />
+                            </div>
+                        </button>
+                        {expandedPlatform === 'meta' && (
+                            <div className="p-4 bg-slate-50 border-t space-y-3">
+                                <InputField label="Ad Account ID" value={metaAds.adAccountId} onChange={(v) => setMetaAds({ ...metaAds, adAccountId: v })} placeholder="act_xxxxxxxxxx" />
+                                <InputField label="Page ID" value={metaAds.pageId} onChange={(v) => setMetaAds({ ...metaAds, pageId: v })} placeholder="Page ID" />
+                                <InputField label="App ID" value={metaAds.appId} onChange={(v) => setMetaAds({ ...metaAds, appId: v })} placeholder="Meta App ID" />
+                                <InputField label="App Secret" value={metaAds.appSecret} onChange={(v) => setMetaAds({ ...metaAds, appSecret: v })} secretKey="metaSecret" placeholder="Meta App Secret" />
+                                <InputField label="Access Token" value={metaAds.accessToken} onChange={(v) => setMetaAds({ ...metaAds, accessToken: v })} secretKey="metaToken" placeholder="Long-lived Access Token" />
+                                <div className="flex gap-2 pt-3">
+                                    <Button variant="outline" size="sm">Test Connection</Button>
+                                    <Button size="sm" onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700 ml-auto">
+                                        {saving ? <Loader2 size={14} className="animate-spin mr-1" /> : <Save size={14} className="mr-1" />} Save
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Google Ads Row */}
+                    <div className="border rounded-lg overflow-hidden">
+                        <button
+                            onClick={() => setExpandedPlatform(expandedPlatform === 'google' ? null : 'google')}
+                            className="w-full flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-emerald-500 flex items-center justify-center">
+                                    <span className="text-white font-bold">G</span>
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-semibold text-slate-800">Google Ads</p>
+                                    <p className="text-sm text-slate-500">Search, Display & YouTube</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Badge variant="outline" className={settings?.googleAds?.connected ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-500"}>
+                                    {settings?.googleAds?.connected ? 'Connected' : 'Not Connected'}
+                                </Badge>
+                                <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${expandedPlatform === 'google' ? 'rotate-180' : ''}`} />
+                            </div>
+                        </button>
+                        {expandedPlatform === 'google' && (
+                            <div className="p-4 bg-slate-50 border-t space-y-3">
+                                <InputField label="Customer ID" value={googleAds.customerId} onChange={(v) => setGoogleAds({ ...googleAds, customerId: v })} placeholder="xxx-xxx-xxxx" />
+                                <InputField label="Developer Token" value={googleAds.developerToken} onChange={(v) => setGoogleAds({ ...googleAds, developerToken: v })} secretKey="googleDev" placeholder="Developer Token" />
+                                <InputField label="Client ID" value={googleAds.clientId} onChange={(v) => setGoogleAds({ ...googleAds, clientId: v })} placeholder="OAuth Client ID" />
+                                <InputField label="Client Secret" value={googleAds.clientSecret} onChange={(v) => setGoogleAds({ ...googleAds, clientSecret: v })} secretKey="googleSecret" placeholder="OAuth Client Secret" />
+                                <InputField label="Refresh Token" value={googleAds.refreshToken} onChange={(v) => setGoogleAds({ ...googleAds, refreshToken: v })} secretKey="googleRefresh" placeholder="OAuth Refresh Token" />
+                                <div className="flex gap-2 pt-3">
+                                    <Button variant="outline" size="sm">Test Connection</Button>
+                                    <Button size="sm" onClick={handleSave} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 ml-auto">
+                                        {saving ? <Loader2 size={14} className="animate-spin mr-1" /> : <Save size={14} className="mr-1" />} Save
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* TikTok Ads Row */}
+                    <div className="border rounded-lg overflow-hidden">
+                        <button
+                            onClick={() => setExpandedPlatform(expandedPlatform === 'tiktok' ? null : 'tiktok')}
+                            className="w-full flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center">
+                                    <span className="text-white font-bold text-sm">TT</span>
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-semibold text-slate-800">TikTok Ads</p>
+                                    <p className="text-sm text-slate-500">Video Advertising</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Badge variant="outline" className={settings?.tiktokAds?.connected ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-500"}>
+                                    {settings?.tiktokAds?.connected ? 'Connected' : 'Not Connected'}
+                                </Badge>
+                                <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${expandedPlatform === 'tiktok' ? 'rotate-180' : ''}`} />
+                            </div>
+                        </button>
+                        {expandedPlatform === 'tiktok' && (
+                            <div className="p-4 bg-slate-50 border-t space-y-3">
+                                <InputField label="Advertiser ID" value={tiktokAds.advertiserId} onChange={(v) => setTiktokAds({ ...tiktokAds, advertiserId: v })} placeholder="TikTok Advertiser ID" />
+                                <InputField label="Business Center ID" value={tiktokAds.businessCenterId} onChange={(v) => setTiktokAds({ ...tiktokAds, businessCenterId: v })} placeholder="Business Center ID" />
+                                <InputField label="App ID" value={tiktokAds.appId} onChange={(v) => setTiktokAds({ ...tiktokAds, appId: v })} placeholder="TikTok App ID" />
+                                <InputField label="App Secret" value={tiktokAds.appSecret} onChange={(v) => setTiktokAds({ ...tiktokAds, appSecret: v })} secretKey="tiktokSecret" placeholder="TikTok App Secret" />
+                                <InputField label="Access Token" value={tiktokAds.accessToken} onChange={(v) => setTiktokAds({ ...tiktokAds, accessToken: v })} secretKey="tiktokToken" placeholder="TikTok Access Token" />
+                                <div className="flex gap-2 pt-3">
+                                    <Button variant="outline" size="sm">Test Connection</Button>
+                                    <Button size="sm" onClick={handleSave} disabled={saving} className="bg-black hover:bg-gray-800 ml-auto">
+                                        {saving ? <Loader2 size={14} className="animate-spin mr-1" /> : <Save size={14} className="mr-1" />} Save
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* X (Twitter) Ads Row */}
+                    <div className="border rounded-lg overflow-hidden">
+                        <button
+                            onClick={() => setExpandedPlatform(expandedPlatform === 'twitter' ? null : 'twitter')}
+                            className="w-full flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-sky-500 flex items-center justify-center">
+                                    <span className="text-white font-bold">X</span>
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-semibold text-slate-800">X (Twitter) Ads</p>
+                                    <p className="text-sm text-slate-500">Tweet Promotions</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Badge variant="outline" className={settings?.twitterAds?.connected ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-500"}>
+                                    {settings?.twitterAds?.connected ? 'Connected' : 'Not Connected'}
+                                </Badge>
+                                <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${expandedPlatform === 'twitter' ? 'rotate-180' : ''}`} />
+                            </div>
+                        </button>
+                        {expandedPlatform === 'twitter' && (
+                            <div className="p-4 bg-slate-50 border-t space-y-3">
+                                <InputField label="Ad Account ID" value={twitterAds.adAccountId} onChange={(v) => setTwitterAds({ ...twitterAds, adAccountId: v })} placeholder="Twitter Ad Account ID" />
+                                <InputField label="API Key" value={twitterAds.apiKey} onChange={(v) => setTwitterAds({ ...twitterAds, apiKey: v })} secretKey="twitterKey" placeholder="Twitter API Key" />
+                                <InputField label="API Secret" value={twitterAds.apiSecret} onChange={(v) => setTwitterAds({ ...twitterAds, apiSecret: v })} secretKey="twitterApiSecret" placeholder="Twitter API Secret" />
+                                <InputField label="Access Token" value={twitterAds.accessToken} onChange={(v) => setTwitterAds({ ...twitterAds, accessToken: v })} secretKey="twitterAccessToken" placeholder="Access Token" />
+                                <InputField label="Access Token Secret" value={twitterAds.accessTokenSecret} onChange={(v) => setTwitterAds({ ...twitterAds, accessTokenSecret: v })} secretKey="twitterTokenSecret" placeholder="Access Token Secret" />
+                                <div className="flex gap-2 pt-3">
+                                    <Button variant="outline" size="sm">Test Connection</Button>
+                                    <Button size="sm" onClick={handleSave} disabled={saving} className="bg-sky-500 hover:bg-sky-600 ml-auto">
+                                        {saving ? <Loader2 size={14} className="animate-spin mr-1" /> : <Save size={14} className="mr-1" />} Save
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Other Services Header */}
+                    <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mt-8 mb-4">Other Services</h3>
+
+                    {/* OpenAI Row */}
+                    <div className="border rounded-lg overflow-hidden">
+                        <button
+                            onClick={() => setExpandedPlatform(expandedPlatform === 'openai' ? null : 'openai')}
+                            className="w-full flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center">
+                                    <span className="text-white font-bold text-sm">AI</span>
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-semibold text-slate-800">OpenAI</p>
+                                    <p className="text-sm text-slate-500">AI Features & Generation</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Badge variant="outline" className={settings?.openai?.connected ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-500"}>
+                                    {settings?.openai?.connected ? 'Connected' : 'Not Connected'}
+                                </Badge>
+                                <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${expandedPlatform === 'openai' ? 'rotate-180' : ''}`} />
+                            </div>
+                        </button>
+                        {expandedPlatform === 'openai' && (
+                            <div className="p-4 bg-slate-50 border-t space-y-3">
+                                <InputField label="API Key" value={openai.apiKey} onChange={(v) => setOpenai({ apiKey: v })} secretKey="openaiKey" placeholder="sk-xxxxxxxxxxxxxxxx" />
+                                <p className="text-xs text-slate-500">Used for AI-powered ad copy and image generation.</p>
+                                <div className="flex gap-2 pt-3">
+                                    <Button variant="outline" size="sm">Test Connection</Button>
+                                    <Button size="sm" onClick={handleSave} disabled={saving} className="bg-purple-600 hover:bg-purple-700 ml-auto">
+                                        {saving ? <Loader2 size={14} className="animate-spin mr-1" /> : <Save size={14} className="mr-1" />} Save
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Google Analytics Row */}
+                    <div className="border rounded-lg overflow-hidden">
+                        <button
+                            onClick={() => setExpandedPlatform(expandedPlatform === 'ga4' ? null : 'ga4')}
+                            className="w-full flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-orange-500 flex items-center justify-center">
+                                    <span className="text-white font-bold text-sm">GA</span>
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-semibold text-slate-800">Google Analytics 4</p>
+                                    <p className="text-sm text-slate-500">Website Analytics</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Badge variant="outline" className={settings?.ga4?.connected ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-500"}>
+                                    {settings?.ga4?.connected ? 'Connected' : 'Not Connected'}
+                                </Badge>
+                                <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${expandedPlatform === 'ga4' ? 'rotate-180' : ''}`} />
+                            </div>
+                        </button>
+                        {expandedPlatform === 'ga4' && (
+                            <div className="p-4 bg-slate-50 border-t space-y-3">
+                                <InputField label="Property ID" value={ga4.propertyId} onChange={(v) => setGa4({ ...ga4, propertyId: v })} placeholder="xxxxxxxxx" />
+                                <InputField label="Access Token" value={ga4.accessToken} onChange={(v) => setGa4({ ...ga4, accessToken: v })} secretKey="ga4Token" placeholder="OAuth Access Token" />
+                                <div className="flex gap-2 pt-3">
+                                    <Button variant="outline" size="sm">Test Connection</Button>
+                                    <Button size="sm" onClick={handleSave} disabled={saving} className="bg-orange-600 hover:bg-orange-700 ml-auto">
+                                        {saving ? <Loader2 size={14} className="animate-spin mr-1" /> : <Save size={14} className="mr-1" />} Save
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* ClickCease Row */}
+                    <div className="border rounded-lg overflow-hidden">
+                        <button
+                            onClick={() => setExpandedPlatform(expandedPlatform === 'clickcease' ? null : 'clickcease')}
+                            className="w-full flex items-center justify-between p-4 bg-white hover:bg-slate-50 transition-colors"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-red-500 flex items-center justify-center">
+                                    <span className="text-white font-bold text-sm">CC</span>
+                                </div>
+                                <div className="text-left">
+                                    <p className="font-semibold text-slate-800">ClickCease</p>
+                                    <p className="text-sm text-slate-500">Fraud Protection</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Badge variant="outline" className={settings?.clickCease?.connected ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-500"}>
+                                    {settings?.clickCease?.connected ? 'Connected' : 'Not Connected'}
+                                </Badge>
+                                <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${expandedPlatform === 'clickcease' ? 'rotate-180' : ''}`} />
+                            </div>
+                        </button>
+                        {expandedPlatform === 'clickcease' && (
+                            <div className="p-4 bg-slate-50 border-t space-y-3">
+                                <InputField label="API Key" value={clickCease.apiKey} onChange={(v) => setClickCease({ ...clickCease, apiKey: v })} secretKey="ccKey" placeholder="Your ClickCease API key" />
+                                <InputField label="Domain" value={clickCease.domain} onChange={(v) => setClickCease({ ...clickCease, domain: v })} placeholder="yourdomain.com" />
+                                <div className="flex gap-2 pt-3">
+                                    <Button variant="outline" size="sm">Test Connection</Button>
+                                    <Button size="sm" onClick={handleSave} disabled={saving} className="bg-red-600 hover:bg-red-700 ml-auto">
+                                        {saving ? <Loader2 size={14} className="animate-spin mr-1" /> : <Save size={14} className="mr-1" />} Save
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
