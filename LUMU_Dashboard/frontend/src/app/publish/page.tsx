@@ -69,15 +69,28 @@ const platformIcons: { [key: string]: any } = {
     facebook: Facebook,
     instagram: Instagram,
     youtube: Youtube,
-    google: Target
+    google: Target,
+    tiktok: Sparkles,
+    twitter: Target
 };
 
 const platformColors: { [key: string]: string } = {
     facebook: '#1877F2',
     instagram: '#E4405F',
     youtube: '#FF0000',
-    google: '#4285F4'
+    google: '#4285F4',
+    tiktok: '#000000',
+    twitter: '#1DA1F2'
 };
+
+const allPlatforms = [
+    { id: 'facebook', name: 'Facebook', icon: Facebook, color: '#1877F2' },
+    { id: 'instagram', name: 'Instagram', icon: Instagram, color: '#E4405F' },
+    { id: 'google', name: 'Google Ads', icon: Target, color: '#4285F4' },
+    { id: 'youtube', name: 'YouTube', icon: Youtube, color: '#FF0000' },
+    { id: 'tiktok', name: 'TikTok', icon: Sparkles, color: '#000000' },
+    { id: 'twitter', name: 'X (Twitter)', icon: Target, color: '#1DA1F2' }
+];
 
 export default function PublishPage() {
     // Selection states
@@ -104,6 +117,16 @@ export default function PublishPage() {
     const [scheduleDate, setScheduleDate] = useState('');
     const [scheduleTime, setScheduleTime] = useState('');
 
+    // Platform selection (user selects on publish page)
+    const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['facebook', 'instagram']);
+
+    const togglePlatform = (platformId: string) => {
+        setSelectedPlatforms(prev =>
+            prev.includes(platformId)
+                ? prev.filter(p => p !== platformId)
+                : [...prev, platformId]
+        );
+    };
     useEffect(() => {
         fetchData();
     }, []);
@@ -133,6 +156,11 @@ export default function PublishPage() {
             return;
         }
 
+        if (selectedPlatforms.length === 0) {
+            setError('Please select at least one platform');
+            return;
+        }
+
         setPublishing(true);
         setError('');
 
@@ -140,7 +168,7 @@ export default function PublishPage() {
             const payload = {
                 name: selectedCampaign.name,
                 campaignId: selectedCampaign._id,
-                platforms: selectedCampaign.platforms,
+                platforms: selectedPlatforms, // Use selectedPlatforms from state
                 budget: selectedCampaign.budget,
                 targeting: {
                     ageMin: selectedCampaign.targeting?.ageRange?.min || 18,
@@ -186,10 +214,11 @@ export default function PublishPage() {
         setPublishResult(null);
         setSelectedCampaign(null);
         setSelectedCreative(null);
+        setSelectedPlatforms(['facebook', 'instagram']);
         setError('');
     };
 
-    const totalReach = (selectedCampaign?.platforms?.length || 0) * 15000000;
+    const totalReach = selectedPlatforms.length * 15000000;
 
     if (loading) {
         return (
@@ -391,11 +420,62 @@ export default function PublishPage() {
                             </CardContent>
                         </Card>
 
-                        {/* Step 3: When to Publish */}
+                        {/* Step 3: Select Platforms */}
+                        <Card className={selectedPlatforms.length > 0 ? 'border-emerald-300 bg-emerald-50/30' : ''}>
+                            <CardHeader>
+                                <CardTitle className="text-lg flex items-center justify-between">
+                                    <span className="flex items-center gap-2">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${selectedPlatforms.length > 0 ? 'bg-emerald-500' : 'bg-purple-500'}`}>
+                                            {selectedPlatforms.length > 0 ? <Check size={16} /> : '3'}
+                                        </div>
+                                        Select Platforms
+                                    </span>
+                                    <Badge className="bg-purple-100 text-purple-700">{selectedPlatforms.length} selected</Badge>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {allPlatforms.map((platform) => {
+                                        const Icon = platform.icon;
+                                        const isSelected = selectedPlatforms.includes(platform.id);
+                                        return (
+                                            <button
+                                                key={platform.id}
+                                                onClick={() => togglePlatform(platform.id)}
+                                                className={`p-4 rounded-xl border-2 flex items-center gap-3 transition-all ${isSelected
+                                                    ? 'border-emerald-500 bg-emerald-50'
+                                                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                                                    }`}
+                                            >
+                                                <div
+                                                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                                                    style={{ backgroundColor: isSelected ? platform.color : '#e2e8f0' }}
+                                                >
+                                                    <Icon size={20} className={isSelected ? 'text-white' : 'text-slate-500'} />
+                                                </div>
+                                                <div className="text-left">
+                                                    <p className={`font-medium ${isSelected ? 'text-emerald-700' : 'text-slate-700'}`}>
+                                                        {platform.name}
+                                                    </p>
+                                                    {platform.id === 'tiktok' && (
+                                                        <p className="text-xs text-orange-500">Video required</p>
+                                                    )}
+                                                </div>
+                                                {isSelected && (
+                                                    <Check size={18} className="text-emerald-500 ml-auto" />
+                                                )}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Step 4: When to Publish */}
                         <Card>
                             <CardHeader>
                                 <CardTitle className="text-lg flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold">3</div>
+                                    <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold">4</div>
                                     When to Publish
                                 </CardTitle>
                             </CardHeader>

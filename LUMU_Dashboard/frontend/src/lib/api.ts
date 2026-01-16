@@ -558,6 +558,23 @@ export interface SettingsData {
         appSecret: string;
         accessToken: string;
         adAccountId: string;
+        pageId?: string;
+        connected: boolean;
+    };
+    tiktokAds: {
+        appId: string;
+        appSecret: string;
+        accessToken: string;
+        advertiserId: string;
+        businessCenterId: string;
+        connected: boolean;
+    };
+    twitterAds: {
+        apiKey: string;
+        apiSecret: string;
+        accessToken: string;
+        accessTokenSecret: string;
+        adAccountId: string;
         connected: boolean;
     };
     ga4: {
@@ -578,6 +595,7 @@ export interface SettingsData {
         dailyReportWebhook: string;
         budgetAlertWebhook: string;
         fraudAlertWebhook: string;
+        publishAdsWebhook?: string;
     };
     branding: {
         dashboardName: string;

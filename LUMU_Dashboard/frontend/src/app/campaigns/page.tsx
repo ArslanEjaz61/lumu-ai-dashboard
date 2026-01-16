@@ -59,6 +59,23 @@ interface Campaign {
     createdAt: string;
 }
 
+interface Creative {
+    _id: string;
+    name: string;
+    creativeType?: string;
+    media?: {
+        imageUrl?: string;
+        videoUrl?: string;
+        thumbnailUrl?: string;
+    };
+    content?: {
+        headline: string;
+        description: string;
+    };
+    status: string;
+    createdAt: string;
+}
+
 export default function CampaignManagerPage() {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [loading, setLoading] = useState(true);
@@ -66,6 +83,10 @@ export default function CampaignManagerPage() {
     const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState<'all' | 'active' | 'draft' | 'paused'>('all');
+
+    // Creatives for ad selection
+    const [creatives, setCreatives] = useState<Creative[]>([]);
+    const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -101,6 +122,23 @@ export default function CampaignManagerPage() {
             setLoading(false);
         }
     };
+
+    const fetchCreatives = async () => {
+        try {
+            const res = await fetch(`${API_URL}/creatives`);
+            const data = await res.json();
+            setCreatives(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error('Failed to fetch creatives:', error);
+        }
+    };
+
+    // Fetch creatives when modal opens
+    useEffect(() => {
+        if (showCreateModal) {
+            fetchCreatives();
+        }
+    }, [showCreateModal]);
 
     const handleCreate = async () => {
         try {
@@ -245,6 +283,7 @@ export default function CampaignManagerPage() {
             adFormat: 'single_image',
             bidStrategy: 'lowest_cost'
         });
+        setSelectedCreatives([]);
     };
 
     const filteredCampaigns = campaigns.filter(c => {
@@ -408,16 +447,11 @@ export default function CampaignManagerPage() {
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {/* Objective & Platforms */}
+                                {/* Objective */}
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-1 text-sm text-slate-600">
                                         {getObjectiveIcon(campaign.objective)}
                                         <span className="capitalize">{campaign.objective}</span>
-                                    </div>
-                                    <div className="flex gap-1">
-                                        {campaign.platforms?.includes('facebook') && <Facebook size={14} className="text-blue-600" />}
-                                        {campaign.platforms?.includes('instagram') && <Instagram size={14} className="text-pink-600" />}
-                                        {campaign.platforms?.includes('google') && <Globe size={14} className="text-green-600" />}
                                     </div>
                                 </div>
 
@@ -574,37 +608,6 @@ export default function CampaignManagerPage() {
                                 </div>
                             </div>
 
-                            {/* Platforms */}
-                            <div>
-                                <label className="text-sm font-medium">Platforms</label>
-                                <div className="flex flex-wrap gap-3 mt-2">
-                                    {[
-                                        { id: 'facebook', icon: Facebook, color: '#1877F2' },
-                                        { id: 'instagram', icon: Instagram, color: '#E4405F' },
-                                        { id: 'google', icon: Globe, color: '#4285F4' },
-                                        { id: 'youtube', icon: Eye, color: '#FF0000' },
-                                        { id: 'tiktok', icon: Sparkles, color: '#000000' }
-                                    ].map((platform) => (
-                                        <label key={platform.id} className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={formData.platforms.includes(platform.id)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setFormData({ ...formData, platforms: [...formData.platforms, platform.id] });
-                                                    } else {
-                                                        setFormData({ ...formData, platforms: formData.platforms.filter(p => p !== platform.id) });
-                                                    }
-                                                }}
-                                                className="rounded"
-                                            />
-                                            <platform.icon size={16} style={{ color: platform.color }} />
-                                            <span className="capitalize text-sm">{platform.id}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
                             {/* Targeting */}
                             <div>
                                 <label className="text-sm font-medium">Target Audience</label>
@@ -696,6 +699,92 @@ export default function CampaignManagerPage() {
                                         <option value="maximize_conversions">Maximize Conversions</option>
                                         <option value="maximize_clicks">Maximize Clicks</option>
                                     </select>
+                                </div>
+                            </div>
+
+                            {/* Select Creatives (based on ad format) */}
+                            <div>
+                                <label className="text-sm font-medium flex items-center justify-between">
+                                    <span>Select Creatives</span>
+                                    <span className="text-xs text-slate-500">
+                                        {['carousel', 'collection', 'stories'].includes(formData.adFormat)
+                                            ? `${selectedCreatives.length} selected (multi-select)`
+                                            : selectedCreatives.length > 0 ? '1 selected' : 'Select 1'}
+                                    </span>
+                                </label>
+                                <p className="text-xs text-slate-500 mb-2">
+                                    {formData.adFormat === 'single_image' && 'Select one image creative'}
+                                    {formData.adFormat === 'single_video' && 'Select one video creative'}
+                                    {formData.adFormat === 'carousel' && 'Select 2-10 images for carousel'}
+                                    {formData.adFormat === 'collection' && 'Select multiple images for collection'}
+                                    {formData.adFormat === 'stories' && 'Select multiple creatives for stories'}
+                                </p>
+                                <div className="grid grid-cols-4 gap-2 mt-2 max-h-48 overflow-y-auto border rounded-lg p-2">
+                                    {creatives.length === 0 ? (
+                                        <p className="col-span-4 text-center text-slate-400 py-4">No creatives found. Create some in Creative Studio first.</p>
+                                    ) : (
+                                        creatives
+                                            .filter(c => {
+                                                if (formData.adFormat === 'single_video') {
+                                                    return c.media?.videoUrl; // Only video creatives
+                                                }
+                                                return true; // All creatives
+                                            })
+                                            .map((creative) => {
+                                                const isSelected = selectedCreatives.includes(creative._id);
+                                                const isMultiSelect = ['carousel', 'collection', 'stories'].includes(formData.adFormat);
+
+                                                return (
+                                                    <button
+                                                        key={creative._id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (isMultiSelect) {
+                                                                // Multi-select mode
+                                                                setSelectedCreatives(prev =>
+                                                                    isSelected
+                                                                        ? prev.filter(id => id !== creative._id)
+                                                                        : [...prev, creative._id]
+                                                                );
+                                                            } else {
+                                                                // Single select mode
+                                                                setSelectedCreatives(isSelected ? [] : [creative._id]);
+                                                            }
+                                                        }}
+                                                        className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${isSelected
+                                                            ? 'border-emerald-500 ring-2 ring-emerald-200'
+                                                            : 'border-slate-200 hover:border-slate-300'
+                                                            }`}
+                                                    >
+                                                        {creative.media?.imageUrl || creative.media?.videoUrl ? (
+                                                            <img
+                                                                src={creative.media?.imageUrl || creative.media?.videoUrl}
+                                                                alt={creative.name}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                                                                <span className="text-xs text-slate-400">No img</span>
+                                                            </div>
+                                                        )}
+                                                        {isSelected && (
+                                                            <div className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center">
+                                                                <div className="bg-emerald-500 rounded-full p-1">
+                                                                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                                    </svg>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {creative.media?.videoUrl && (
+                                                            <div className="absolute bottom-1 right-1 bg-black/70 rounded px-1">
+                                                                <span className="text-[10px] text-white">VIDEO</span>
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })
+                                    )}
                                 </div>
                             </div>
 

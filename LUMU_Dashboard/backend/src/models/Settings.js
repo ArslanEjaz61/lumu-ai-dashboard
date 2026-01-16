@@ -1,7 +1,17 @@
 const mongoose = require('mongoose');
 
 const SettingsSchema = new mongoose.Schema({
-    // Google Ads
+    // Meta Ads (Facebook/Instagram)
+    metaAds: {
+        appId: { type: String, default: '' },
+        appSecret: { type: String, default: '' },
+        accessToken: { type: String, default: '' },
+        adAccountId: { type: String, default: '' },
+        pageId: { type: String, default: '' },
+        connected: { type: Boolean, default: false }
+    },
+
+    // Google Ads (Search, Display, YouTube, Shopping)
     googleAds: {
         developerToken: { type: String, default: '' },
         clientId: { type: String, default: '' },
@@ -10,37 +20,55 @@ const SettingsSchema = new mongoose.Schema({
         customerId: { type: String, default: '' },
         connected: { type: Boolean, default: false }
     },
-    // Meta Ads (Facebook/Instagram)
-    metaAds: {
+
+    // TikTok Ads
+    tiktokAds: {
         appId: { type: String, default: '' },
         appSecret: { type: String, default: '' },
         accessToken: { type: String, default: '' },
+        advertiserId: { type: String, default: '' },
+        businessCenterId: { type: String, default: '' },
+        connected: { type: Boolean, default: false }
+    },
+
+    // Twitter/X Ads
+    twitterAds: {
+        apiKey: { type: String, default: '' },
+        apiSecret: { type: String, default: '' },
+        accessToken: { type: String, default: '' },
+        accessTokenSecret: { type: String, default: '' },
         adAccountId: { type: String, default: '' },
         connected: { type: Boolean, default: false }
     },
+
     // Google Analytics 4
     ga4: {
         propertyId: { type: String, default: '' },
         accessToken: { type: String, default: '' },
         connected: { type: Boolean, default: false }
     },
+
     // ClickCease
     clickCease: {
         apiKey: { type: String, default: '' },
         domain: { type: String, default: '' },
         connected: { type: Boolean, default: false }
     },
+
     // OpenAI for AI features
     openai: {
         apiKey: { type: String, default: '' },
         connected: { type: Boolean, default: false }
     },
+
     // N8N Webhooks
     n8n: {
         dailyReportWebhook: { type: String, default: '' },
         budgetAlertWebhook: { type: String, default: '' },
-        fraudAlertWebhook: { type: String, default: '' }
+        fraudAlertWebhook: { type: String, default: '' },
+        publishAdsWebhook: { type: String, default: '' }
     },
+
     // Branding
     branding: {
         dashboardName: { type: String, default: 'LUMU' },
@@ -48,6 +76,7 @@ const SettingsSchema = new mongoose.Schema({
         logoUrl: { type: String, default: '' },
         primaryColor: { type: String, default: '#10b981' }
     },
+
     // Users
     users: [{
         name: { type: String, required: true },
@@ -56,6 +85,7 @@ const SettingsSchema = new mongoose.Schema({
         active: { type: Boolean, default: true },
         createdAt: { type: Date, default: Date.now }
     }],
+
     // General settings
     currency: { type: String, default: 'PKR' },
     syncInterval: { type: Number, default: 30 }, // seconds

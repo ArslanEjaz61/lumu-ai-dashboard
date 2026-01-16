@@ -513,12 +513,6 @@ export default function CreativeStudioPage() {
                                 )}
 
                                 <div className="flex items-center gap-2 mt-3">
-                                    {creative.usage?.platforms?.includes('facebook') && (
-                                        <Facebook size={14} className="text-blue-600" />
-                                    )}
-                                    {creative.usage?.platforms?.includes('instagram') && (
-                                        <Instagram size={14} className="text-pink-600" />
-                                    )}
                                     <span className="text-xs text-slate-400 ml-auto">
                                         {new Date(creative.createdAt).toLocaleDateString()}
                                     </span>
@@ -870,36 +864,6 @@ export default function CreativeStudioPage() {
                                 </>
                             )
                             }
-
-                            {/* Common: Platforms */}
-                            <div>
-                                <label className="text-sm font-medium">Platforms</label>
-                                <div className="flex flex-wrap gap-3 mt-2">
-                                    {[
-                                        { id: 'facebook', label: 'Facebook', color: '#1877F2' },
-                                        { id: 'instagram', label: 'Instagram', color: '#E4405F' },
-                                        { id: 'google', label: 'Google', color: '#4285F4' },
-                                        { id: 'youtube', label: 'YouTube', color: '#FF0000' },
-                                        { id: 'tiktok', label: 'TikTok', color: '#000000' }
-                                    ].map((platform) => (
-                                        <label key={platform.id} className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={formData.platforms.includes(platform.id)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setFormData({ ...formData, platforms: [...formData.platforms, platform.id] });
-                                                    } else {
-                                                        setFormData({ ...formData, platforms: formData.platforms.filter(p => p !== platform.id) });
-                                                    }
-                                                }}
-                                                className="rounded"
-                                            />
-                                            <span className="text-sm" style={{ color: platform.color }}>{platform.label}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
 
                             {/* Usage Type */}
                             <div>

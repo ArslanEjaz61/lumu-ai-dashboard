@@ -1,131 +1,224 @@
+// Google Ads API Service
+// Direct integration with Google Ads API v15.0
+// For Search, Display, and YouTube ads
+
 const axios = require('axios');
+const Settings = require('../models/Settings');
 
-/**
- * Google Ads API Service
- * Documentation: https://developers.google.com/google-ads/api/docs/start
- */
+const GOOGLE_ADS_API_VERSION = 'v15';
+const GOOGLE_ADS_API_BASE = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
 
-const GOOGLE_ADS_CUSTOMER_ID = process.env.GOOGLE_ADS_CUSTOMER_ID;
-const GOOGLE_ADS_DEVELOPER_TOKEN = process.env.GOOGLE_ADS_DEVELOPER_TOKEN;
-
-// Get all campaigns
-exports.getCampaigns = async (startDate, endDate) => {
-    try {
-        // TODO: Implement actual Google Ads API call
-        // For demo, returning mock data
-        return [
-            {
-                id: 'google_1',
-                name: 'Search - Brand Keywords',
-                status: 'ENABLED',
-                platform: 'google',
-                type: 'SEARCH',
-                budget: 40000,
-                spend: 35200,
-                impressions: 85000,
-                clicks: 4250,
-                ctr: 5.0,
-                cpc: 8.28,
-                conversions: 95,
-                revenue: 142500,
-                roas: 4.05
-            },
-            {
-                id: 'google_2',
-                name: 'Display - Remarketing',
-                status: 'ENABLED',
-                platform: 'google',
-                type: 'DISPLAY',
-                budget: 25000,
-                spend: 21800,
-                impressions: 320000,
-                clicks: 1920,
-                ctr: 0.6,
-                cpc: 11.35,
-                conversions: 42,
-                revenue: 63000,
-                roas: 2.89
-            },
-            {
-                id: 'google_3',
-                name: 'YouTube - Product Showcase',
-                status: 'ENABLED',
-                platform: 'google',
-                type: 'VIDEO',
-                budget: 30000,
-                spend: 26500,
-                impressions: 180000,
-                clicks: 2700,
-                ctr: 1.5,
-                cpc: 9.81,
-                conversions: 38,
-                revenue: 57000,
-                roas: 2.15
-            },
-            {
-                id: 'google_4',
-                name: 'Shopping - All Products',
-                status: 'ENABLED',
-                platform: 'google',
-                type: 'SHOPPING',
-                budget: 35000,
-                spend: 31200,
-                impressions: 145000,
-                clicks: 5800,
-                ctr: 4.0,
-                cpc: 5.38,
-                conversions: 125,
-                revenue: 187500,
-                roas: 6.01
-            }
-        ];
-    } catch (error) {
-        console.error('Google Ads Campaigns Error:', error);
-        throw error;
+class GoogleAdsService {
+    constructor() {
+        this.credentials = null;
     }
-};
 
-// Get campaign by ID
-exports.getCampaignById = async (id) => {
-    try {
-        const campaigns = await this.getCampaigns();
-        return campaigns.find(c => c.id === id) || null;
-    } catch (error) {
-        console.error('Google Ads Campaign By ID Error:', error);
-        throw error;
-    }
-};
-
-// Get performance metrics
-exports.getPerformanceMetrics = async (startDate, endDate) => {
-    try {
-        return {
-            totalSpend: 114700,
-            totalImpressions: 730000,
-            totalClicks: 14670,
-            totalConversions: 300,
-            totalRevenue: 450000,
-            ctr: 2.01,
-            cpc: 7.82,
-            roas: 3.92,
-            cpa: 382.33
+    // Load credentials from Settings database
+    async loadCredentials() {
+        const settings = await Settings.getSettings();
+        this.credentials = {
+            developerToken: settings.googleAds?.developerToken || '',
+            clientId: settings.googleAds?.clientId || '',
+            clientSecret: settings.googleAds?.clientSecret || '',
+            refreshToken: settings.googleAds?.refreshToken || '',
+            customerId: settings.googleAds?.customerId?.replace(/-/g, '') || '' // Remove dashes
         };
-    } catch (error) {
-        console.error('Google Ads Performance Error:', error);
-        throw error;
-    }
-};
 
-// Get keyword performance
-exports.getKeywordPerformance = async (startDate, endDate) => {
-    try {
-        return [
-            { keyword: 'online shopping pakistan', clicks: 1250, conversions: 28, cpc: 12.5 },
-            { keyword: 'buy [product] online', clicks: 980, conversions: 22, cpc: 8.2 },
-            { keyword: 'lumu marketplace', clicks: 2100, conversions: 45, cpc: 3.5 }
-        ];
-    } catch (error) {
-        console.error('Google Ads Keywords Error:', error);
-        throw error;
+        if (!this.credentials.developerToken || !this.credentials.customerId) {
+            throw new Error('Google Ads credentials not configured. Go to Settings to add them.');
+        }
+
+        return this.credentials;
     }
-};
+
+    // Get fresh access token from refresh token
+    async getAccessToken() {
+        const response = await axios.post('https://oauth2.googleapis.com/token', {
+            client_id: this.credentials.clientId,
+            client_secret: this.credentials.clientSecret,
+            refresh_token: this.credentials.refreshToken,
+            grant_type: 'refresh_token'
+        });
+
+        return response.data.access_token;
+    }
+
+    // Get headers for Google Ads API
+    async getHeaders() {
+        const accessToken = await this.getAccessToken();
+        return {
+            'Authorization': `Bearer ${accessToken}`,
+            'developer-token': this.credentials.developerToken,
+            'Content-Type': 'application/json'
+        };
+    }
+
+    // Create Campaign
+    async createCampaign(campaignData) {
+        await this.loadCredentials();
+        const headers = await this.getHeaders();
+
+        const response = await axios.post(
+            `${GOOGLE_ADS_API_BASE}/customers/${this.credentials.customerId}/campaigns:mutate`,
+            {
+                operations: [{
+                    create: {
+                        name: campaignData.name,
+                        advertisingChannelType: this.mapChannelType(campaignData.adFormat),
+                        status: 'PAUSED',
+                        campaignBudget: `customers/${this.credentials.customerId}/campaignBudgets/-1`,
+                        biddingStrategyType: this.mapBidStrategy(campaignData.bidStrategy),
+                        targetSpend: {}
+                    }
+                }]
+            },
+            { headers }
+        );
+
+        return response.data;
+    }
+
+    // Create Campaign Budget
+    async createBudget(budgetData) {
+        await this.loadCredentials();
+        const headers = await this.getHeaders();
+
+        const response = await axios.post(
+            `${GOOGLE_ADS_API_BASE}/customers/${this.credentials.customerId}/campaignBudgets:mutate`,
+            {
+                operations: [{
+                    create: {
+                        name: `Budget_${Date.now()}`,
+                        amountMicros: (budgetData.daily || 1000) * 1000000, // Convert to micros
+                        deliveryMethod: 'STANDARD'
+                    }
+                }]
+            },
+            { headers }
+        );
+
+        return response.data;
+    }
+
+    // Create Ad Group
+    async createAdGroup(adGroupData, campaignId) {
+        await this.loadCredentials();
+        const headers = await this.getHeaders();
+
+        const response = await axios.post(
+            `${GOOGLE_ADS_API_BASE}/customers/${this.credentials.customerId}/adGroups:mutate`,
+            {
+                operations: [{
+                    create: {
+                        name: adGroupData.name || 'Ad Group',
+                        campaign: campaignId,
+                        status: 'PAUSED',
+                        cpcBidMicros: (adGroupData.cpcBid || 10) * 1000000 // Convert to micros
+                    }
+                }]
+            },
+            { headers }
+        );
+
+        return response.data;
+    }
+
+    // Create Responsive Search Ad
+    async createSearchAd(adData, adGroupId) {
+        await this.loadCredentials();
+        const headers = await this.getHeaders();
+
+        const response = await axios.post(
+            `${GOOGLE_ADS_API_BASE}/customers/${this.credentials.customerId}/adGroupAds:mutate`,
+            {
+                operations: [{
+                    create: {
+                        adGroup: adGroupId,
+                        status: 'PAUSED',
+                        ad: {
+                            responsiveSearchAd: {
+                                headlines: [
+                                    { text: adData.headline || 'Shop Now' },
+                                    { text: adData.headline2 || 'Best Deals' },
+                                    { text: adData.headline3 || 'Limited Time' }
+                                ],
+                                descriptions: [
+                                    { text: adData.description || 'Check out our amazing products' },
+                                    { text: adData.description2 || 'Free shipping available' }
+                                ]
+                            },
+                            finalUrls: [adData.linkUrl || adData.url || 'https://example.com']
+                        }
+                    }
+                }]
+            },
+            { headers }
+        );
+
+        return response.data;
+    }
+
+    // Full publish flow
+    async publishCampaign(campaignData, creativeData) {
+        try {
+            console.log('🔵 Google Ads: Starting campaign publish...');
+
+            // Step 1: Create Budget
+            const budget = await this.createBudget(campaignData.budget || { daily: 1000 });
+            console.log('✅ Google Budget Created');
+
+            // Step 2: Create Campaign
+            const campaign = await this.createCampaign(campaignData);
+            console.log('✅ Google Campaign Created');
+
+            // Step 3: Create Ad Group
+            const adGroup = await this.createAdGroup(campaignData, campaign.results?.[0]?.resourceName);
+            console.log('✅ Google Ad Group Created');
+
+            // Step 4: Create Ad
+            const ad = await this.createSearchAd(creativeData, adGroup.results?.[0]?.resourceName);
+            console.log('✅ Google Ad Created');
+
+            return {
+                success: true,
+                platform: 'google',
+                platforms: ['google', 'youtube'],
+                campaignId: campaign.results?.[0]?.resourceName,
+                adGroupId: adGroup.results?.[0]?.resourceName,
+                adId: ad.results?.[0]?.resourceName
+            };
+        } catch (error) {
+            console.error('❌ Google Ads Error:', error.response?.data || error.message);
+            return {
+                success: false,
+                platform: 'google',
+                error: error.response?.data?.error?.message || error.message
+            };
+        }
+    }
+
+    // Map channel type
+    mapChannelType(adFormat) {
+        const map = {
+            'search': 'SEARCH',
+            'display': 'DISPLAY',
+            'video': 'VIDEO',
+            'shopping': 'SHOPPING'
+        };
+        return map[adFormat?.toLowerCase()] || 'SEARCH';
+    }
+
+    // Map bid strategy
+    mapBidStrategy(strategy) {
+        const map = {
+            'maximize_clicks': 'MAXIMIZE_CLICKS',
+            'maximize_conversions': 'MAXIMIZE_CONVERSIONS',
+            'target_cpa': 'TARGET_CPA',
+            'target_roas': 'TARGET_ROAS',
+            'manual_cpc': 'MANUAL_CPC'
+        };
+        return map[strategy?.toLowerCase()] || 'MAXIMIZE_CLICKS';
+    }
+}
+
+module.exports = new GoogleAdsService();
