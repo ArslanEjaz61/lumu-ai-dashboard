@@ -657,19 +657,6 @@ export default function CampaignManagerPage() {
                                 </div>
                             </div>
 
-                            {/* Link URL (Required for ads) */}
-                            <div>
-                                <label className="text-sm font-medium">Destination URL *</label>
-                                <input
-                                    type="url"
-                                    value={formData.linkUrl}
-                                    onChange={(e) => setFormData({ ...formData, linkUrl: e.target.value })}
-                                    placeholder="https://yourwebsite.com/landing-page"
-                                    className="w-full mt-1 p-3 border rounded-lg"
-                                />
-                                <p className="text-xs text-slate-500 mt-1">Where users will go when they click your ad</p>
-                            </div>
-
                             {/* Ad Format & Bid Strategy */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>

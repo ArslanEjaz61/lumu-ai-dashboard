@@ -77,8 +77,10 @@ export default function CreativeStudioPage() {
         description: '',
         primaryText: '',
         callToAction: 'shop_now',
+        destinationUrl: '',
         language: 'english',
         imageUrl: '',
+        videoUrl: '',
         platforms: ['facebook', 'instagram'],
         usageType: 'ad',
         prompt: '',
@@ -341,8 +343,10 @@ export default function CreativeStudioPage() {
             description: '',
             primaryText: '',
             callToAction: 'shop_now',
+            destinationUrl: '',
             language: 'english',
             imageUrl: '',
+            videoUrl: '',
             platforms: ['facebook', 'instagram'],
             usageType: 'ad',
             prompt: '',
@@ -756,12 +760,11 @@ export default function CreativeStudioPage() {
                                             <label className="text-sm font-medium">Type</label>
                                             <select
                                                 value={formData.type}
-                                                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                                onChange={(e) => setFormData({ ...formData, type: e.target.value, imageUrl: '', videoUrl: '' })}
                                                 className="w-full mt-1 p-2 border rounded-lg bg-white"
                                             >
                                                 <option value="image">Image</option>
                                                 <option value="video">Video</option>
-                                                <option value="carousel">Carousel</option>
                                             </select>
                                         </div>
                                     </div>
@@ -784,54 +787,103 @@ export default function CreativeStudioPage() {
                                             className="w-full mt-1 p-2 border rounded-lg h-20 resize-none"
                                         />
                                     </div>
+                                    {/* Dynamic Upload Section based on Type */}
                                     <div>
-                                        <label className="text-sm font-medium">Image</label>
+                                        <label className="text-sm font-medium">
+                                            {formData.type === 'video' ? 'Video' : 'Image'}
+                                        </label>
                                         <input
                                             type="file"
                                             ref={fileInputRef}
-                                            accept="image/*"
+                                            accept={formData.type === 'video' ? 'video/*' : 'image/*'}
                                             className="hidden"
                                             onChange={(e) => {
                                                 const file = e.target.files?.[0];
                                                 if (file) handleFileUpload(file, false);
                                             }}
                                         />
-                                        {formData.imageUrl ? (
-                                            <div className="relative w-full h-40 rounded-lg overflow-hidden border mt-1">
-                                                <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                                                <button
-                                                    onClick={() => setFormData({ ...formData, imageUrl: '' })}
-                                                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
-                                                >
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={() => fileInputRef.current?.click()}
-                                                disabled={uploading}
-                                                className="w-full h-40 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-emerald-50 hover:border-emerald-300 transition-colors mt-1"
-                                            >
-                                                {uploading ? (
-                                                    <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+
+                                        {formData.type === 'image' ? (
+                                            /* Image Upload */
+                                            <>
+                                                {formData.imageUrl ? (
+                                                    <div className="relative w-full h-40 rounded-lg overflow-hidden border mt-1">
+                                                        <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                                        <button
+                                                            onClick={() => setFormData({ ...formData, imageUrl: '' })}
+                                                            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </div>
                                                 ) : (
-                                                    <>
-                                                        <Upload className="w-8 h-8 text-emerald-400" />
-                                                        <span className="text-sm text-slate-500">Click to upload image</span>
-                                                        <span className="text-xs text-slate-400">or drag and drop</span>
-                                                    </>
+                                                    <button
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        disabled={uploading}
+                                                        className="w-full h-40 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-emerald-50 hover:border-emerald-300 transition-colors mt-1"
+                                                    >
+                                                        {uploading ? (
+                                                            <Loader2 className="w-8 h-8 text-emerald-400 animate-spin" />
+                                                        ) : (
+                                                            <>
+                                                                <Image className="w-8 h-8 text-emerald-400" />
+                                                                <span className="text-sm text-slate-500">Click to upload image</span>
+                                                                <span className="text-xs text-slate-400">JPG, PNG, WebP (Max 5MB)</span>
+                                                            </>
+                                                        )}
+                                                    </button>
                                                 )}
-                                            </button>
+                                                <div className="mt-2">
+                                                    <input
+                                                        type="text"
+                                                        value={formData.imageUrl}
+                                                        onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                                                        placeholder="Or paste image URL..."
+                                                        className="w-full p-2 border rounded-lg text-sm"
+                                                    />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            /* Video Upload */
+                                            <>
+                                                {formData.videoUrl ? (
+                                                    <div className="relative w-full h-40 rounded-lg overflow-hidden border mt-1 bg-slate-900">
+                                                        <video src={formData.videoUrl} className="w-full h-full object-contain" controls />
+                                                        <button
+                                                            onClick={() => setFormData({ ...formData, videoUrl: '' })}
+                                                            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        disabled={uploading}
+                                                        className="w-full h-40 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 hover:bg-purple-50 hover:border-purple-300 transition-colors mt-1"
+                                                    >
+                                                        {uploading ? (
+                                                            <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+                                                        ) : (
+                                                            <>
+                                                                <Video className="w-8 h-8 text-purple-400" />
+                                                                <span className="text-sm text-slate-500">Click to upload video</span>
+                                                                <span className="text-xs text-slate-400">MP4, MOV, WebM (Max 100MB)</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                )}
+                                                <div className="mt-2">
+                                                    <input
+                                                        type="text"
+                                                        value={formData.videoUrl}
+                                                        onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                                                        placeholder="Or paste video URL..."
+                                                        className="w-full p-2 border rounded-lg text-sm"
+                                                    />
+                                                </div>
+                                            </>
                                         )}
-                                        <div className="mt-2">
-                                            <input
-                                                type="text"
-                                                value={formData.imageUrl}
-                                                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                                                placeholder="Or paste image URL..."
-                                                className="w-full p-2 border rounded-lg text-sm"
-                                            />
-                                        </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -860,6 +912,23 @@ export default function CreativeStudioPage() {
                                                 <option value="roman_urdu">Roman Urdu</option>
                                             </select>
                                         </div>
+                                    </div>
+
+                                    {/* Destination URL */}
+                                    <div>
+                                        <label className="text-sm font-medium">
+                                            Destination URL <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="url"
+                                            value={formData.destinationUrl}
+                                            onChange={(e) => setFormData({ ...formData, destinationUrl: e.target.value })}
+                                            placeholder="https://yourwebsite.com/landing-page"
+                                            className="w-full mt-1 p-2.5 border rounded-lg focus:ring-2 focus:ring-purple-200 focus:border-purple-400 transition-all"
+                                        />
+                                        <p className="text-xs text-slate-400 mt-1">
+                                            Where users will go when they click your ad
+                                        </p>
                                     </div>
                                 </>
                             )
