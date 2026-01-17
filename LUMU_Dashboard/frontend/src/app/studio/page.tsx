@@ -25,6 +25,11 @@ import {
     Upload,
     X,
     ImagePlus,
+    ExternalLink,
+    Download,
+    Share2,
+    Clock,
+    Target,
 } from "lucide-react";
 
 // API Base URL
@@ -66,6 +71,7 @@ export default function CreativeStudioPage() {
     const [createMode, setCreateMode] = useState<'manual' | 'ai'>('manual');
     const [generating, setGenerating] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [viewingCreative, setViewingCreative] = useState<Creative | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const refImageInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,9 +119,19 @@ export default function CreativeStudioPage() {
         setUploading(true);
         try {
             const formDataUpload = new FormData();
-            formDataUpload.append('image', file);
 
-            const res = await fetch(`${API_URL}/upload/image`, {
+            // Check if it's a video based on file type or form type
+            const isVideo = file.type.startsWith('video/') || formData.type === 'video';
+
+            if (isVideo) {
+                formDataUpload.append('video', file);
+            } else {
+                formDataUpload.append('image', file);
+            }
+
+            const endpoint = isVideo ? `${API_URL}/upload/video` : `${API_URL}/upload/image`;
+
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 body: formDataUpload
             });
@@ -126,12 +142,19 @@ export default function CreativeStudioPage() {
 
                 if (isReference) {
                     setFormData(prev => ({ ...prev, referenceImages: [...prev.referenceImages, fullUrl] }));
+                } else if (isVideo) {
+                    setFormData(prev => ({ ...prev, videoUrl: fullUrl }));
                 } else {
                     setFormData(prev => ({ ...prev, imageUrl: fullUrl }));
                 }
+            } else {
+                const errorData = await res.json();
+                console.error('Upload failed:', errorData.error);
+                alert('Upload failed: ' + (errorData.error || 'Unknown error'));
             }
         } catch (error) {
             console.error('Upload failed:', error);
+            alert('Upload failed. Please try again.');
         } finally {
             setUploading(false);
         }
@@ -154,7 +177,8 @@ export default function CreativeStudioPage() {
                         language: formData.language
                     },
                     media: {
-                        imageUrl: formData.imageUrl
+                        imageUrl: formData.type === 'image' ? formData.imageUrl : '',
+                        videoUrl: formData.type === 'video' ? formData.videoUrl : ''
                     },
                     usage: {
                         usageType: formData.usageType,
@@ -482,13 +506,66 @@ export default function CreativeStudioPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredCreatives.map((creative) => (
-                        <Card key={creative._id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                            {/* Preview Image */}
-                            <div className="h-40 bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-                                {creative.media?.imageUrl ? (
-                                    <img src={creative.media.imageUrl} alt="" className="w-full h-full object-cover" />
+                        <Card key={creative._id} className="overflow-hidden hover:shadow-xl transition-all duration-300 group">
+                            {/* Preview - Image or Video */}
+                            <div className="relative h-48 bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center overflow-hidden">
+                                {creative.media?.videoUrl ? (
+                                    /* Video Preview */
+                                    <>
+                                        <video
+                                            src={creative.media.videoUrl}
+                                            className="w-full h-full object-cover"
+                                            muted
+                                            onMouseOver={(e) => (e.target as HTMLVideoElement).play()}
+                                            onMouseOut={(e) => {
+                                                const video = e.target as HTMLVideoElement;
+                                                video.pause();
+                                                video.currentTime = 0;
+                                            }}
+                                        />
+                                        {/* Video Play Icon Overlay */}
+                                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-100 group-hover:opacity-0 transition-opacity">
+                                            <div className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                                                <div className="w-0 h-0 border-t-8 border-t-transparent border-l-12 border-l-slate-900 border-b-8 border-b-transparent ml-1"
+                                                    style={{ borderLeftWidth: '14px' }}
+                                                />
+                                            </div>
+                                        </div>
+                                        {/* Video Badge */}
+                                        <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                                            <Video size={12} /> VIDEO
+                                        </div>
+                                    </>
+                                ) : creative.media?.imageUrl ? (
+                                    /* Image Preview */
+                                    <>
+                                        <img
+                                            src={creative.media.imageUrl}
+                                            alt={creative.name}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                        />
+                                        {/* Image Badge */}
+                                        <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                                            <Image size={12} /> IMAGE
+                                        </div>
+                                    </>
                                 ) : (
-                                    <Image className="w-12 h-12 text-purple-300" />
+                                    /* No Media Placeholder */
+                                    <div className="text-center">
+                                        <div className="w-16 h-16 rounded-full bg-slate-700 flex items-center justify-center mx-auto mb-2">
+                                            <Image className="w-8 h-8 text-slate-500" />
+                                        </div>
+                                        <p className="text-slate-500 text-sm">No preview</p>
+                                    </div>
+                                )}
+
+                                {/* AI Generated Sparkle */}
+                                {creative.aiGenerated?.isAiGenerated && (
+                                    <div className="absolute top-2 left-2">
+                                        <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1 shadow-lg">
+                                            <Sparkles size={10} /> AI
+                                        </div>
+                                    </div>
                                 )}
                             </div>
 
@@ -523,7 +600,7 @@ export default function CreativeStudioPage() {
                                 </div>
 
                                 <div className="flex gap-1 mt-3 pt-3 border-t">
-                                    <Button variant="ghost" size="sm" className="flex-1">
+                                    <Button variant="ghost" size="sm" className="flex-1" onClick={() => setViewingCreative(creative)}>
                                         <Eye size={14} className="mr-1" /> View
                                     </Button>
                                     <Button variant="ghost" size="sm" className="flex-1" onClick={() => handleEdit(creative)}>
@@ -1007,6 +1084,175 @@ export default function CreativeStudioPage() {
                         </CardContent >
                     </Card >
                 </div >
+            )}
+
+            {/* View Creative Modal */}
+            {viewingCreative && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <Card className="w-full max-w-3xl max-h-[90vh] overflow-hidden bg-white shadow-2xl">
+                        {/* Header */}
+                        <div className="relative">
+                            {/* Creative Preview */}
+                            <div className="h-64 bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
+                                {viewingCreative.media?.imageUrl ? (
+                                    <img
+                                        src={viewingCreative.media.imageUrl}
+                                        alt={viewingCreative.name}
+                                        className="w-full h-full object-contain"
+                                    />
+                                ) : viewingCreative.media?.videoUrl ? (
+                                    <video
+                                        src={viewingCreative.media.videoUrl}
+                                        controls
+                                        className="w-full h-full object-contain"
+                                    />
+                                ) : (
+                                    <div className="text-center">
+                                        <Image className="w-16 h-16 text-slate-600 mx-auto mb-2" />
+                                        <p className="text-slate-500">No media</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Close button */}
+                            <button
+                                onClick={() => setViewingCreative(null)}
+                                className="absolute top-3 right-3 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-all"
+                            >
+                                <X size={18} />
+                            </button>
+
+                            {/* Badges */}
+                            <div className="absolute top-3 left-3 flex gap-2">
+                                <Badge className={`${viewingCreative.status === 'live' ? 'bg-emerald-500' : viewingCreative.status === 'draft' ? 'bg-slate-500' : 'bg-orange-500'} text-white`}>
+                                    {viewingCreative.status}
+                                </Badge>
+                                {viewingCreative.aiGenerated?.isAiGenerated && (
+                                    <Badge className="bg-purple-500 text-white">
+                                        <Sparkles size={10} className="mr-1" /> AI Generated
+                                    </Badge>
+                                )}
+                                <Badge className="bg-blue-500 text-white">
+                                    {viewingCreative.creativeType || 'image'}
+                                </Badge>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <CardContent className="p-6">
+                            {/* Title & Actions */}
+                            <div className="flex items-start justify-between mb-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-900">{viewingCreative.name}</h2>
+                                    <p className="text-sm text-slate-500 flex items-center gap-2 mt-1">
+                                        <Clock size={14} />
+                                        Created on {new Date(viewingCreative.createdAt).toLocaleDateString('en-US', {
+                                            year: 'numeric', month: 'long', day: 'numeric'
+                                        })}
+                                    </p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" size="sm">
+                                        <Share2 size={14} className="mr-1" /> Share
+                                    </Button>
+                                    <Button variant="outline" size="sm">
+                                        <Download size={14} className="mr-1" /> Download
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Creative Details */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Left Column */}
+                                <div className="space-y-4">
+                                    {viewingCreative.content?.headline && (
+                                        <div>
+                                            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Headline</label>
+                                            <p className="text-lg font-semibold text-slate-900 mt-1">{viewingCreative.content.headline}</p>
+                                        </div>
+                                    )}
+                                    {viewingCreative.content?.description && (
+                                        <div>
+                                            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Description</label>
+                                            <p className="text-slate-700 mt-1">{viewingCreative.content.description}</p>
+                                        </div>
+                                    )}
+                                    {viewingCreative.content?.primaryText && (
+                                        <div>
+                                            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Primary Text</label>
+                                            <p className="text-slate-700 mt-1">{viewingCreative.content.primaryText}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Right Column */}
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div className="bg-slate-50 rounded-lg p-3">
+                                            <label className="text-xs font-medium text-slate-500">Call to Action</label>
+                                            <p className="font-semibold text-slate-900 capitalize mt-1">
+                                                {(viewingCreative.content?.callToAction || 'shop_now').replace('_', ' ')}
+                                            </p>
+                                        </div>
+                                        <div className="bg-slate-50 rounded-lg p-3">
+                                            <label className="text-xs font-medium text-slate-500">Language</label>
+                                            <p className="font-semibold text-slate-900 capitalize mt-1">
+                                                {viewingCreative.content?.language || 'English'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {viewingCreative.usage?.platforms && viewingCreative.usage.platforms.length > 0 && (
+                                        <div>
+                                            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Platforms</label>
+                                            <div className="flex gap-2 mt-2">
+                                                {viewingCreative.usage.platforms.map(platform => (
+                                                    <Badge key={platform} variant="outline" className="capitalize">
+                                                        {platform === 'facebook' && <Facebook size={12} className="mr-1" />}
+                                                        {platform === 'instagram' && <Instagram size={12} className="mr-1" />}
+                                                        {platform}
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {viewingCreative.aiGenerated?.isAiGenerated && viewingCreative.aiGenerated?.prompt && (
+                                        <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
+                                            <label className="text-xs font-medium text-purple-600 uppercase tracking-wide flex items-center gap-1">
+                                                <Sparkles size={12} /> AI Prompt
+                                            </label>
+                                            <p className="text-sm text-purple-800 mt-1 italic">"{viewingCreative.aiGenerated.prompt}"</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-3 mt-6 pt-4 border-t">
+                                <Button
+                                    variant="outline"
+                                    className="flex-1"
+                                    onClick={() => {
+                                        handleEdit(viewingCreative);
+                                        setViewingCreative(null);
+                                    }}
+                                >
+                                    <Edit2 size={16} className="mr-2" /> Edit Creative
+                                </Button>
+                                <Button
+                                    className="flex-1 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600"
+                                    onClick={() => {
+                                        // Navigate to publish with this creative
+                                        window.location.href = '/publish';
+                                    }}
+                                >
+                                    <Send size={16} className="mr-2" /> Use in Campaign
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
             )}
         </div >
     );
