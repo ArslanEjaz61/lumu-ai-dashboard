@@ -18,3 +18,4 @@ Thumbs.db
 # Temp files
 *.log
 
+package-lock.json 
