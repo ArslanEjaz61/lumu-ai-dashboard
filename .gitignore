@@ -5,7 +5,11 @@ node_modules/
 __pycache__/
 *.pyc
 *.pyo
+
+# Environment
 .env
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
@@ -18,4 +22,21 @@ Thumbs.db
 # Temp files
 *.log
 
-package-lock.json 
+# Lock files
+package-lock.json
+
+# Build outputs
+.next/
+dist/
+build/
+out/
+
+# Uploads (large files)
+uploads/
+**/uploads/
+
+# Videos
+*.mp4
+*.mov
+*.webm
+*.avi
