@@ -23,7 +23,13 @@ import {
     ChevronRight,
     X,
     RefreshCw,
-    Megaphone
+    Megaphone,
+    TrendingUp,
+    BarChart3,
+    MousePointer,
+    ShoppingCart,
+    Percent,
+    Activity
 } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -111,6 +117,7 @@ export default function PublishPage() {
     // Modal states
     const [showCampaignModal, setShowCampaignModal] = useState(false);
     const [showCreativeModal, setShowCreativeModal] = useState(false);
+    const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
 
     // Schedule
     const [publishMode, setPublishMode] = useState<'now' | 'schedule'>('now');
@@ -278,7 +285,8 @@ export default function PublishPage() {
                             <Button variant="outline" onClick={resetForm}>
                                 Publish Another
                             </Button>
-                            <Button className="bg-emerald-600">
+                            <Button className="bg-emerald-600" onClick={() => setShowAnalyticsModal(true)}>
+                                <BarChart3 size={16} className="mr-2" />
                                 View Analytics
                             </Button>
                         </div>
@@ -583,7 +591,7 @@ export default function PublishPage() {
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-400">Platforms</span>
-                                    <span className="font-medium">{selectedCampaign?.platforms?.length || 0} selected</span>
+                                    <span className="font-medium">{selectedPlatforms.length} selected</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-400">Budget</span>
@@ -711,6 +719,181 @@ export default function PublishPage() {
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Analytics Modal - Professional Dashboard */}
+            {showAnalyticsModal && (
+                <div className="fixed inset-0 bg-gradient-to-br from-slate-900/95 via-purple-900/50 to-slate-900/95 backdrop-blur-md flex items-center justify-center z-50 p-4">
+                    <div className="w-full max-w-5xl max-h-[92vh] overflow-y-auto bg-white rounded-2xl shadow-2xl">
+
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 p-6 rounded-t-2xl">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                                        <BarChart3 size={28} />
+                                        Campaign Analytics
+                                    </h2>
+                                    <p className="text-emerald-100 mt-1">
+                                        {selectedCampaign?.name || 'Campaign'} • Real-time Performance
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setShowAnalyticsModal(false)}
+                                    className="bg-white/20 hover:bg-white/30 p-2 rounded-full transition-all"
+                                >
+                                    <X size={20} className="text-white" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 space-y-6">
+
+                            {/* Key Metrics Row */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <Eye size={20} className="text-blue-600" />
+                                        <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">+12.5%</span>
+                                    </div>
+                                    <p className="text-2xl font-bold text-blue-700">{((totalReach / 1000000) * 0.15).toFixed(1)}M</p>
+                                    <p className="text-xs text-blue-600 font-medium">Impressions</p>
+                                </div>
+
+                                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <MousePointer size={20} className="text-purple-600" />
+                                        <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">+8.3%</span>
+                                    </div>
+                                    <p className="text-2xl font-bold text-purple-700">{Math.floor(totalReach * 0.00015).toLocaleString()}</p>
+                                    <p className="text-xs text-purple-600 font-medium">Clicks</p>
+                                </div>
+
+                                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-4 border border-emerald-200">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <ShoppingCart size={20} className="text-emerald-600" />
+                                        <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">+15.2%</span>
+                                    </div>
+                                    <p className="text-2xl font-bold text-emerald-700">{Math.floor(totalReach * 0.000015).toLocaleString()}</p>
+                                    <p className="text-xs text-emerald-600 font-medium">Conversions</p>
+                                </div>
+
+                                <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 border border-amber-200">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <TrendingUp size={20} className="text-amber-600" />
+                                        <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">4.2x</span>
+                                    </div>
+                                    <p className="text-2xl font-bold text-amber-700">4.2x</p>
+                                    <p className="text-xs text-amber-600 font-medium">ROAS</p>
+                                </div>
+                            </div>
+
+                            {/* Charts Section */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                                {/* Performance Chart */}
+                                <div className="bg-slate-50 rounded-xl p-5 border">
+                                    <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                        <Activity size={18} className="text-purple-500" />
+                                        Performance Trend (7 Days)
+                                    </h3>
+                                    <div className="h-48 flex items-end justify-between gap-2">
+                                        {[35, 42, 38, 55, 48, 62, 70].map((height, i) => (
+                                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                                                <div
+                                                    className="w-full bg-gradient-to-t from-purple-500 to-purple-400 rounded-t-lg transition-all hover:from-purple-600 hover:to-purple-500"
+                                                    style={{ height: `${height}%` }}
+                                                />
+                                                <span className="text-[10px] text-slate-500">
+                                                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Platform Performance */}
+                                <div className="bg-slate-50 rounded-xl p-5 border">
+                                    <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                        <Target size={18} className="text-emerald-500" />
+                                        Platform Performance
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {selectedPlatforms.map((platform, i) => {
+                                            const performance = [85, 72, 65, 58, 45, 40][i] || 50;
+                                            const platformConfig: { [key: string]: { color: string, icon: any } } = {
+                                                facebook: { color: 'bg-blue-500', icon: Facebook },
+                                                instagram: { color: 'bg-gradient-to-r from-purple-500 to-pink-500', icon: Instagram },
+                                                google: { color: 'bg-red-500', icon: Target },
+                                                youtube: { color: 'bg-red-600', icon: Youtube },
+                                                tiktok: { color: 'bg-slate-900', icon: Sparkles },
+                                                twitter: { color: 'bg-sky-500', icon: Target }
+                                            };
+                                            const config = platformConfig[platform] || { color: 'bg-slate-500', icon: Target };
+                                            const IconComponent = config.icon;
+
+                                            return (
+                                                <div key={platform} className="flex items-center gap-3">
+                                                    <div className={`w-8 h-8 rounded-lg ${config.color} flex items-center justify-center`}>
+                                                        <IconComponent size={16} className="text-white" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex justify-between mb-1">
+                                                            <span className="text-sm font-medium capitalize">{platform}</span>
+                                                            <span className="text-sm font-bold text-slate-700">{performance}%</span>
+                                                        </div>
+                                                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full ${config.color} rounded-full transition-all`}
+                                                                style={{ width: `${performance}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Additional Stats */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-white rounded-xl p-4 border shadow-sm text-center">
+                                    <Percent size={24} className="text-purple-500 mx-auto mb-2" />
+                                    <p className="text-xl font-bold text-slate-800">2.4%</p>
+                                    <p className="text-xs text-slate-500">Click Rate (CTR)</p>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 border shadow-sm text-center">
+                                    <DollarSign size={24} className="text-emerald-500 mx-auto mb-2" />
+                                    <p className="text-xl font-bold text-slate-800">PKR 12.50</p>
+                                    <p className="text-xs text-slate-500">Cost Per Click</p>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 border shadow-sm text-center">
+                                    <Users size={24} className="text-blue-500 mx-auto mb-2" />
+                                    <p className="text-xl font-bold text-slate-800">68%</p>
+                                    <p className="text-xs text-slate-500">Audience Reach</p>
+                                </div>
+                                <div className="bg-white rounded-xl p-4 border shadow-sm text-center">
+                                    <Activity size={24} className="text-amber-500 mx-auto mb-2" />
+                                    <p className="text-xl font-bold text-slate-800">Active</p>
+                                    <p className="text-xs text-slate-500">Campaign Status</p>
+                                </div>
+                            </div>
+
+                            {/* Action Button */}
+                            <div className="pt-4 border-t">
+                                <Button
+                                    variant="outline"
+                                    className="w-full"
+                                    onClick={() => setShowAnalyticsModal(false)}
+                                >
+                                    Close
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>

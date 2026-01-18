@@ -1086,172 +1086,216 @@ export default function CreativeStudioPage() {
                 </div >
             )}
 
-            {/* View Creative Modal */}
+            {/* View Creative Modal - Premium Design */}
             {viewingCreative && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <Card className="w-full max-w-3xl max-h-[90vh] overflow-hidden bg-white shadow-2xl">
-                        {/* Header */}
-                        <div className="relative">
-                            {/* Creative Preview */}
-                            <div className="h-64 bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
-                                {viewingCreative.media?.imageUrl ? (
-                                    <img
-                                        src={viewingCreative.media.imageUrl}
-                                        alt={viewingCreative.name}
-                                        className="w-full h-full object-contain"
-                                    />
-                                ) : viewingCreative.media?.videoUrl ? (
-                                    <video
-                                        src={viewingCreative.media.videoUrl}
-                                        controls
-                                        className="w-full h-full object-contain"
-                                    />
-                                ) : (
-                                    <div className="text-center">
-                                        <Image className="w-16 h-16 text-slate-600 mx-auto mb-2" />
-                                        <p className="text-slate-500">No media</p>
-                                    </div>
-                                )}
-                            </div>
+                <div className="fixed inset-0 bg-gradient-to-br from-slate-900/90 via-purple-900/50 to-slate-900/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
+                    <div className="w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-2xl shadow-2xl animate-in fade-in zoom-in duration-300">
 
-                            {/* Close button */}
-                            <button
-                                onClick={() => setViewingCreative(null)}
-                                className="absolute top-3 right-3 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-all"
-                            >
-                                <X size={18} />
-                            </button>
+                        {/* Main Container with Glass Effect */}
+                        <div className="bg-white/95 backdrop-blur-xl">
 
-                            {/* Badges */}
-                            <div className="absolute top-3 left-3 flex gap-2">
-                                <Badge className={`${viewingCreative.status === 'live' ? 'bg-emerald-500' : viewingCreative.status === 'draft' ? 'bg-slate-500' : 'bg-orange-500'} text-white`}>
-                                    {viewingCreative.status}
-                                </Badge>
-                                {viewingCreative.aiGenerated?.isAiGenerated && (
-                                    <Badge className="bg-purple-500 text-white">
-                                        <Sparkles size={10} className="mr-1" /> AI Generated
-                                    </Badge>
-                                )}
-                                <Badge className="bg-blue-500 text-white">
-                                    {viewingCreative.creativeType || 'image'}
-                                </Badge>
-                            </div>
-                        </div>
+                            {/* Top Section - Media Preview */}
+                            <div className="relative">
+                                {/* Gradient Overlay Top */}
+                                <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/60 to-transparent z-10" />
 
-                        {/* Content */}
-                        <CardContent className="p-6">
-                            {/* Title & Actions */}
-                            <div className="flex items-start justify-between mb-4">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-slate-900">{viewingCreative.name}</h2>
-                                    <p className="text-sm text-slate-500 flex items-center gap-2 mt-1">
-                                        <Clock size={14} />
-                                        Created on {new Date(viewingCreative.createdAt).toLocaleDateString('en-US', {
-                                            year: 'numeric', month: 'long', day: 'numeric'
-                                        })}
-                                    </p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <Button variant="outline" size="sm">
-                                        <Share2 size={14} className="mr-1" /> Share
-                                    </Button>
-                                    <Button variant="outline" size="sm">
-                                        <Download size={14} className="mr-1" /> Download
-                                    </Button>
-                                </div>
-                            </div>
+                                {/* Close Button */}
+                                <button
+                                    onClick={() => setViewingCreative(null)}
+                                    className="absolute top-4 right-4 z-20 bg-white/20 hover:bg-white/40 backdrop-blur-sm p-2.5 rounded-full transition-all duration-300 group"
+                                >
+                                    <X size={20} className="text-white group-hover:rotate-90 transition-transform duration-300" />
+                                </button>
 
-                            {/* Creative Details */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Left Column */}
-                                <div className="space-y-4">
-                                    {viewingCreative.content?.headline && (
-                                        <div>
-                                            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Headline</label>
-                                            <p className="text-lg font-semibold text-slate-900 mt-1">{viewingCreative.content.headline}</p>
-                                        </div>
-                                    )}
-                                    {viewingCreative.content?.description && (
-                                        <div>
-                                            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Description</label>
-                                            <p className="text-slate-700 mt-1">{viewingCreative.content.description}</p>
-                                        </div>
-                                    )}
-                                    {viewingCreative.content?.primaryText && (
-                                        <div>
-                                            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Primary Text</label>
-                                            <p className="text-slate-700 mt-1">{viewingCreative.content.primaryText}</p>
-                                        </div>
+                                {/* Status & Type Badges */}
+                                <div className="absolute top-4 left-4 z-20 flex gap-2">
+                                    <span className={`px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm shadow-lg ${viewingCreative.status === 'live'
+                                            ? 'bg-emerald-500/90 text-white'
+                                            : viewingCreative.status === 'draft'
+                                                ? 'bg-slate-600/90 text-white'
+                                                : 'bg-orange-500/90 text-white'
+                                        }`}>
+                                        {viewingCreative.status?.toUpperCase()}
+                                    </span>
+                                    <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-blue-500/90 text-white backdrop-blur-sm shadow-lg">
+                                        {viewingCreative.creativeType?.toUpperCase() || 'IMAGE'}
+                                    </span>
+                                    {viewingCreative.aiGenerated?.isAiGenerated && (
+                                        <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-gradient-to-r from-purple-500 to-pink-500 text-white backdrop-blur-sm shadow-lg flex items-center gap-1">
+                                            <Sparkles size={10} /> AI
+                                        </span>
                                     )}
                                 </div>
 
-                                {/* Right Column */}
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="bg-slate-50 rounded-lg p-3">
-                                            <label className="text-xs font-medium text-slate-500">Call to Action</label>
-                                            <p className="font-semibold text-slate-900 capitalize mt-1">
-                                                {(viewingCreative.content?.callToAction || 'shop_now').replace('_', ' ')}
-                                            </p>
+                                {/* Media Preview */}
+                                <div className="h-80 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+                                    {viewingCreative.media?.videoUrl ? (
+                                        <video
+                                            src={viewingCreative.media.videoUrl}
+                                            controls
+                                            autoPlay
+                                            className="w-full h-full object-contain"
+                                            style={{ maxHeight: '320px' }}
+                                        />
+                                    ) : viewingCreative.media?.imageUrl ? (
+                                        <img
+                                            src={viewingCreative.media.imageUrl}
+                                            alt={viewingCreative.name}
+                                            className="w-full h-full object-contain"
+                                            style={{ maxHeight: '320px' }}
+                                        />
+                                    ) : (
+                                        <div className="text-center">
+                                            <div className="w-20 h-20 rounded-full bg-slate-700/50 flex items-center justify-center mx-auto mb-3">
+                                                <Image className="w-10 h-10 text-slate-500" />
+                                            </div>
+                                            <p className="text-slate-400 font-medium">No media available</p>
                                         </div>
-                                        <div className="bg-slate-50 rounded-lg p-3">
-                                            <label className="text-xs font-medium text-slate-500">Language</label>
-                                            <p className="font-semibold text-slate-900 capitalize mt-1">
-                                                {viewingCreative.content?.language || 'English'}
-                                            </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Content Section */}
+                            <div className="p-6 md:p-8">
+                                {/* Header Row */}
+                                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+                                    <div className="flex-1">
+                                        <h2 className="text-2xl md:text-3xl font-bold text-slate-900 mb-2">
+                                            {viewingCreative.name}
+                                        </h2>
+                                        <div className="flex items-center gap-3 text-slate-500">
+                                            <div className="flex items-center gap-1.5">
+                                                <Clock size={14} />
+                                                <span className="text-sm">
+                                                    {new Date(viewingCreative.createdAt).toLocaleDateString('en-US', {
+                                                        year: 'numeric', month: 'long', day: 'numeric'
+                                                    })}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm" className="gap-2 hover:bg-slate-100">
+                                            <Share2 size={15} /> Share
+                                        </Button>
+                                        <Button variant="outline" size="sm" className="gap-2 hover:bg-slate-100">
+                                            <Download size={15} /> Download
+                                        </Button>
+                                    </div>
+                                </div>
 
-                                    {viewingCreative.usage?.platforms && viewingCreative.usage.platforms.length > 0 && (
-                                        <div>
-                                            <label className="text-xs font-medium text-slate-500 uppercase tracking-wide">Platforms</label>
-                                            <div className="flex gap-2 mt-2">
-                                                {viewingCreative.usage.platforms.map(platform => (
-                                                    <Badge key={platform} variant="outline" className="capitalize">
-                                                        {platform === 'facebook' && <Facebook size={12} className="mr-1" />}
-                                                        {platform === 'instagram' && <Instagram size={12} className="mr-1" />}
-                                                        {platform}
-                                                    </Badge>
+                                {/* Details Grid */}
+                                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+                                    {/* Left Column - Content Info (3 cols) */}
+                                    <div className="lg:col-span-3 space-y-5">
+                                        {/* Headline */}
+                                        {viewingCreative.content?.headline && (
+                                            <div className="bg-gradient-to-r from-slate-50 to-slate-100/50 rounded-xl p-4 border border-slate-100">
+                                                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Headline</label>
+                                                <p className="text-xl font-bold text-slate-800 mt-2">{viewingCreative.content.headline}</p>
+                                            </div>
+                                        )}
+
+                                        {/* Description */}
+                                        {viewingCreative.content?.description && (
+                                            <div className="bg-gradient-to-r from-slate-50 to-slate-100/50 rounded-xl p-4 border border-slate-100">
+                                                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Description</label>
+                                                <p className="text-slate-700 mt-2 leading-relaxed">{viewingCreative.content.description}</p>
+                                            </div>
+                                        )}
+
+                                        {/* AI Prompt - If AI Generated */}
+                                        {viewingCreative.aiGenerated?.isAiGenerated && viewingCreative.aiGenerated?.prompt && (
+                                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-100">
+                                                <label className="text-xs font-semibold text-purple-500 uppercase tracking-wider flex items-center gap-1.5">
+                                                    <Sparkles size={12} /> AI Generation Prompt
+                                                </label>
+                                                <p className="text-purple-700 mt-2 italic">"{viewingCreative.aiGenerated.prompt}"</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Right Column - Meta Info (2 cols) */}
+                                    <div className="lg:col-span-2 space-y-4">
+                                        {/* CTA & Language Cards */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-100 text-center">
+                                                <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Call to Action</label>
+                                                <p className="text-lg font-bold text-emerald-700 mt-2 capitalize">
+                                                    {(viewingCreative.content?.callToAction || 'shop_now').replace(/_/g, ' ')}
+                                                </p>
+                                            </div>
+                                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100 text-center">
+                                                <label className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">Language</label>
+                                                <p className="text-lg font-bold text-blue-700 mt-2 capitalize">
+                                                    {viewingCreative.content?.language || 'English'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Platforms */}
+                                        <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl p-4 border border-slate-100">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Target Platforms</label>
+                                            <div className="flex flex-wrap gap-2 mt-3">
+                                                {(viewingCreative.usage?.platforms || ['facebook', 'instagram']).map(platform => (
+                                                    <span
+                                                        key={platform}
+                                                        className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${platform === 'facebook'
+                                                                ? 'bg-blue-100 text-blue-700'
+                                                                : platform === 'instagram'
+                                                                    ? 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700'
+                                                                    : platform === 'google'
+                                                                        ? 'bg-red-100 text-red-700'
+                                                                        : platform === 'youtube'
+                                                                            ? 'bg-red-100 text-red-700'
+                                                                            : 'bg-slate-100 text-slate-700'
+                                                            }`}
+                                                    >
+                                                        {platform === 'facebook' && <Facebook size={14} />}
+                                                        {platform === 'instagram' && <Instagram size={14} />}
+                                                        {platform === 'google' && <Globe size={14} />}
+                                                        {platform === 'youtube' && <Video size={14} />}
+                                                        <span className="capitalize">{platform}</span>
+                                                    </span>
                                                 ))}
                                             </div>
                                         </div>
-                                    )}
 
-                                    {viewingCreative.aiGenerated?.isAiGenerated && viewingCreative.aiGenerated?.prompt && (
-                                        <div className="bg-purple-50 rounded-lg p-3 border border-purple-100">
-                                            <label className="text-xs font-medium text-purple-600 uppercase tracking-wide flex items-center gap-1">
-                                                <Sparkles size={12} /> AI Prompt
-                                            </label>
-                                            <p className="text-sm text-purple-800 mt-1 italic">"{viewingCreative.aiGenerated.prompt}"</p>
+                                        {/* Usage Type */}
+                                        <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-100 text-center">
+                                            <label className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Usage Type</label>
+                                            <p className="text-lg font-bold text-amber-700 mt-2 capitalize">
+                                                {viewingCreative.usage?.usageType || 'Ad'}
+                                            </p>
                                         </div>
-                                    )}
+                                    </div>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex flex-col sm:flex-row gap-3 mt-8 pt-6 border-t border-slate-100">
+                                    <Button
+                                        variant="outline"
+                                        className="flex-1 h-12 text-base font-medium hover:bg-slate-50 transition-all"
+                                        onClick={() => {
+                                            handleEdit(viewingCreative);
+                                            setViewingCreative(null);
+                                        }}
+                                    >
+                                        <Edit2 size={18} className="mr-2" /> Edit Creative
+                                    </Button>
+                                    <Button
+                                        className="flex-1 h-12 text-base font-medium bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-600 hover:via-teal-600 hover:to-cyan-600 shadow-lg shadow-emerald-500/25 transition-all"
+                                        onClick={() => {
+                                            window.location.href = '/publish';
+                                        }}
+                                    >
+                                        <Send size={18} className="mr-2" /> Use in Campaign
+                                    </Button>
                                 </div>
                             </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex gap-3 mt-6 pt-4 border-t">
-                                <Button
-                                    variant="outline"
-                                    className="flex-1"
-                                    onClick={() => {
-                                        handleEdit(viewingCreative);
-                                        setViewingCreative(null);
-                                    }}
-                                >
-                                    <Edit2 size={16} className="mr-2" /> Edit Creative
-                                </Button>
-                                <Button
-                                    className="flex-1 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-600 hover:to-cyan-600"
-                                    onClick={() => {
-                                        // Navigate to publish with this creative
-                                        window.location.href = '/publish';
-                                    }}
-                                >
-                                    <Send size={16} className="mr-2" /> Use in Campaign
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
                 </div>
             )}
         </div >
