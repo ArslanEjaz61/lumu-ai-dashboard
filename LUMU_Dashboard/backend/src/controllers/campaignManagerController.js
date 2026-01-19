@@ -12,7 +12,8 @@ exports.getAllCampaigns = async (req, res) => {
 
         const campaigns = await Campaign.find(query)
             .sort({ createdAt: -1 })
-            .populate('createdBy', 'name email');
+            .populate('createdBy', 'name email')
+            .populate('creatives', 'name creativeType media');
 
         res.json(campaigns);
     } catch (error) {
@@ -25,7 +26,8 @@ exports.getAllCampaigns = async (req, res) => {
 exports.getCampaignById = async (req, res) => {
     try {
         const campaign = await Campaign.findById(req.params.id)
-            .populate('createdBy', 'name email');
+            .populate('createdBy', 'name email')
+            .populate('creatives', 'name creativeType media');
 
         if (!campaign) {
             return res.status(404).json({ error: 'Campaign not found' });

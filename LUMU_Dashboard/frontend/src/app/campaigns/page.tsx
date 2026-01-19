@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,10 @@ import {
     Globe,
     Eye,
     Sparkles,
-    X
+    X,
+    Upload,
+    Image,
+    Video
 } from "lucide-react";
 
 // API Base URL
@@ -56,6 +59,17 @@ interface Campaign {
         ctr: number;
         roas: number;
     };
+    adFormat?: string;
+    creatives?: Array<{
+        _id: string;
+        name: string;
+        creativeType?: string;
+        media?: {
+            imageUrl?: string;
+            videoUrl?: string;
+            thumbnailUrl?: string;
+        };
+    }>;
     createdAt: string;
 }
 
@@ -87,6 +101,20 @@ export default function CampaignManagerPage() {
     // Creatives for ad selection
     const [creatives, setCreatives] = useState<Creative[]>([]);
     const [selectedCreatives, setSelectedCreatives] = useState<string[]>([]);
+    const [creativeSearch, setCreativeSearch] = useState('');
+
+    // Quick creative creation
+    const [showQuickCreate, setShowQuickCreate] = useState(false);
+    const [quickCreating, setQuickCreating] = useState(false);
+    const [quickCreativeForm, setQuickCreativeForm] = useState({
+        name: '',
+        type: 'image' as 'image' | 'video',
+        headline: '',
+        description: '',
+        imageUrl: '',
+        videoUrl: ''
+    });
+    const quickFileInputRef = useRef<HTMLInputElement>(null);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -165,6 +193,7 @@ export default function CampaignManagerPage() {
                     linkUrl: formData.linkUrl,
                     adFormat: formData.adFormat,
                     bidStrategy: formData.bidStrategy,
+                    creatives: selectedCreatives,
                     status: 'draft'
                 })
             });
@@ -205,7 +234,8 @@ export default function CampaignManagerPage() {
                     },
                     linkUrl: formData.linkUrl,
                     adFormat: formData.adFormat,
-                    bidStrategy: formData.bidStrategy
+                    bidStrategy: formData.bidStrategy,
+                    creatives: selectedCreatives
                 })
             });
             if (res.ok) {
@@ -263,6 +293,8 @@ export default function CampaignManagerPage() {
             adFormat: (campaign as any).adFormat || 'single_image',
             bidStrategy: (campaign as any).bidStrategy || 'lowest_cost'
         });
+        // Load existing creatives for this campaign
+        setSelectedCreatives(campaign.creatives?.map(c => c._id) || []);
         setShowCreateModal(true);
     };
 
@@ -284,6 +316,77 @@ export default function CampaignManagerPage() {
             bidStrategy: 'lowest_cost'
         });
         setSelectedCreatives([]);
+    };
+
+    // Quick file upload handler
+    const handleQuickFileUpload = async (file: File) => {
+        try {
+            const uploadFormData = new FormData();
+            const isVideo = file.type.startsWith('video/');
+
+            if (isVideo) {
+                uploadFormData.append('video', file);
+            } else {
+                uploadFormData.append('image', file);
+            }
+
+            const endpoint = isVideo ? `${API_URL}/upload/video` : `${API_URL}/upload/image`;
+            const res = await fetch(endpoint, { method: 'POST', body: uploadFormData });
+
+            if (res.ok) {
+                const data = await res.json();
+                const fullUrl = data.url.startsWith('http') ? data.url : `${API_URL.replace('/api', '')}${data.url}`;
+
+                if (isVideo) {
+                    setQuickCreativeForm(prev => ({ ...prev, videoUrl: fullUrl, type: 'video' }));
+                } else {
+                    setQuickCreativeForm(prev => ({ ...prev, imageUrl: fullUrl, type: 'image' }));
+                }
+            }
+        } catch (error) {
+            console.error('Quick upload failed:', error);
+        }
+    };
+
+    // Quick create creative
+    const handleQuickCreate = async () => {
+        if (!quickCreativeForm.name || (!quickCreativeForm.imageUrl && !quickCreativeForm.videoUrl)) return;
+
+        try {
+            setQuickCreating(true);
+            const res = await fetch(`${API_URL}/creatives`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: quickCreativeForm.name,
+                    creativeType: quickCreativeForm.type,
+                    content: {
+                        headline: quickCreativeForm.headline,
+                        description: quickCreativeForm.description,
+                        callToAction: 'shop_now',
+                        language: 'english'
+                    },
+                    media: {
+                        imageUrl: quickCreativeForm.type === 'image' ? quickCreativeForm.imageUrl : '',
+                        videoUrl: quickCreativeForm.type === 'video' ? quickCreativeForm.videoUrl : ''
+                    },
+                    usage: { usageType: 'ad', platforms: ['facebook', 'instagram'] },
+                    status: 'draft'
+                })
+            });
+
+            if (res.ok) {
+                const newCreative = await res.json();
+                fetchCreatives(); // Refresh list
+                setSelectedCreatives(prev => [...prev, newCreative._id]); // Auto-select
+                setShowQuickCreate(false);
+                setQuickCreativeForm({ name: '', type: 'image', headline: '', description: '', imageUrl: '', videoUrl: '' });
+            }
+        } catch (error) {
+            console.error('Quick create failed:', error);
+        } finally {
+            setQuickCreating(false);
+        }
     };
 
     const filteredCampaigns = campaigns.filter(c => {
@@ -446,6 +549,59 @@ export default function CampaignManagerPage() {
                                     </Badge>
                                 </div>
                             </CardHeader>
+
+                            {/* Creative Preview */}
+                            {campaign.creatives && campaign.creatives.length > 0 && (
+                                <div className="px-4 pb-2">
+                                    {campaign.adFormat === 'carousel' ? (
+                                        /* Carousel - show multiple images */
+                                        <div className="flex gap-1 overflow-x-auto pb-1">
+                                            {campaign.creatives.slice(0, 4).map((creative, idx) => (
+                                                <div key={creative._id} className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border">
+                                                    {creative.media?.imageUrl ? (
+                                                        <img src={creative.media.imageUrl} alt={creative.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <div className="w-full h-full bg-slate-200 flex items-center justify-center text-xs text-slate-400">📷</div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {campaign.creatives.length > 4 && (
+                                                <div className="flex-shrink-0 w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-medium text-slate-500">
+                                                    +{campaign.creatives.length - 4}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        /* Single image/video */
+                                        <div className="relative h-32 rounded-lg overflow-hidden bg-slate-100">
+                                            {campaign.creatives[0]?.media?.videoUrl ? (
+                                                <video
+                                                    src={campaign.creatives[0].media.videoUrl}
+                                                    className="w-full h-full object-cover"
+                                                    muted
+                                                    onMouseEnter={(e) => (e.target as HTMLVideoElement).play()}
+                                                    onMouseLeave={(e) => { (e.target as HTMLVideoElement).pause(); (e.target as HTMLVideoElement).currentTime = 0; }}
+                                                />
+                                            ) : campaign.creatives[0]?.media?.imageUrl ? (
+                                                <img
+                                                    src={campaign.creatives[0].media.imageUrl}
+                                                    alt={campaign.creatives[0].name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                                    No preview
+                                                </div>
+                                            )}
+                                            {/* Format badge */}
+                                            <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 rounded text-xs text-white font-medium">
+                                                {campaign.adFormat === 'single_video' || campaign.creatives[0]?.media?.videoUrl ? '🎬 Video' : '📷 Image'}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             <CardContent className="space-y-4">
                                 {/* Objective */}
                                 <div className="flex items-center gap-4">
@@ -691,88 +847,124 @@ export default function CampaignManagerPage() {
 
                             {/* Select Creatives (based on ad format) */}
                             <div>
-                                <label className="text-sm font-medium flex items-center justify-between">
-                                    <span>Select Creatives</span>
-                                    <span className="text-xs text-slate-500">
-                                        {['carousel', 'collection', 'stories'].includes(formData.adFormat)
-                                            ? `${selectedCreatives.length} selected (multi-select)`
-                                            : selectedCreatives.length > 0 ? '1 selected' : 'Select 1'}
-                                    </span>
-                                </label>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-sm font-medium">Select Creatives</label>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs text-slate-500">
+                                            {['carousel', 'stories'].includes(formData.adFormat)
+                                                ? `${selectedCreatives.length} selected`
+                                                : selectedCreatives.length > 0 ? '1 selected' : 'Select 1'}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                // Set type based on ad format
+                                                const isVideoFormat = formData.adFormat === 'single_video' || formData.adFormat === 'stories';
+                                                setQuickCreativeForm(prev => ({ ...prev, type: isVideoFormat ? 'video' : 'image' }));
+                                                setShowQuickCreate(true);
+                                            }}
+                                            className="flex items-center gap-1 px-2 py-1 bg-purple-500 text-white text-xs rounded-lg hover:bg-purple-600 transition-colors"
+                                        >
+                                            <Plus size={12} /> Add New
+                                        </button>
+                                    </div>
+                                </div>
                                 <p className="text-xs text-slate-500 mb-2">
-                                    {formData.adFormat === 'single_image' && 'Select one image creative'}
-                                    {formData.adFormat === 'single_video' && 'Select one video creative'}
-                                    {formData.adFormat === 'carousel' && 'Select 2-10 images for carousel'}
-                                    {formData.adFormat === 'collection' && 'Select multiple images for collection'}
-                                    {formData.adFormat === 'stories' && 'Select multiple creatives for stories'}
+                                    {formData.adFormat === 'single_image' && '📷 Select an image creative'}
+                                    {formData.adFormat === 'single_video' && '🎬 Select a video creative'}
+                                    {formData.adFormat === 'carousel' && '📷 Select 2-10 images for carousel'}
+                                    {formData.adFormat === 'stories' && '🎬 Select multiple videos for stories'}
+                                    {formData.adFormat === 'collection' && '📦 Select any creative (image or video)'}
                                 </p>
-                                <div className="grid grid-cols-4 gap-2 mt-2 max-h-48 overflow-y-auto border rounded-lg p-2">
-                                    {creatives.length === 0 ? (
-                                        <p className="col-span-4 text-center text-slate-400 py-4">No creatives found. Create some in Creative Studio first.</p>
+
+                                {/* Selected Creatives Grid - Only shows what's selected */}
+                                <div className="border rounded-lg p-3 bg-slate-50 min-h-[120px]">
+                                    {selectedCreatives.length === 0 ? (
+                                        /* Empty State */
+                                        <div className="flex flex-col items-center justify-center py-6 text-center">
+                                            <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center mb-2">
+                                                <Plus size={24} className="text-slate-400" />
+                                            </div>
+                                            <p className="text-sm text-slate-500">No creatives selected</p>
+                                            <p className="text-xs text-slate-400 mt-1">Click "Add New" to browse and select creatives</p>
+                                        </div>
                                     ) : (
-                                        creatives
-                                            .filter(c => {
-                                                if (formData.adFormat === 'single_video') {
-                                                    return c.media?.videoUrl; // Only video creatives
-                                                }
-                                                return true; // All creatives
-                                            })
-                                            .map((creative) => {
-                                                const isSelected = selectedCreatives.includes(creative._id);
-                                                const isMultiSelect = ['carousel', 'collection', 'stories'].includes(formData.adFormat);
+                                        /* Show Selected Creatives */
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {selectedCreatives.map(creativeId => {
+                                                const creative = creatives.find(c => c._id === creativeId);
+                                                if (!creative) return null;
+
+                                                const hasVideo = !!creative.media?.videoUrl;
 
                                                 return (
-                                                    <button
+                                                    <div
                                                         key={creative._id}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            if (isMultiSelect) {
-                                                                // Multi-select mode
-                                                                setSelectedCreatives(prev =>
-                                                                    isSelected
-                                                                        ? prev.filter(id => id !== creative._id)
-                                                                        : [...prev, creative._id]
-                                                                );
-                                                            } else {
-                                                                // Single select mode
-                                                                setSelectedCreatives(isSelected ? [] : [creative._id]);
-                                                            }
-                                                        }}
-                                                        className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${isSelected
-                                                            ? 'border-emerald-500 ring-2 ring-emerald-200'
-                                                            : 'border-slate-200 hover:border-slate-300'
-                                                            }`}
+                                                        className="relative aspect-square rounded-lg overflow-hidden border-2 border-emerald-500 ring-2 ring-emerald-200 group"
                                                     >
-                                                        {creative.media?.imageUrl || creative.media?.videoUrl ? (
+                                                        {/* Thumbnail */}
+                                                        {hasVideo ? (
+                                                            <video
+                                                                src={creative.media?.videoUrl}
+                                                                className="w-full h-full object-cover"
+                                                                muted
+                                                            />
+                                                        ) : (
                                                             <img
-                                                                src={creative.media?.imageUrl || creative.media?.videoUrl}
+                                                                src={creative.media?.imageUrl}
                                                                 alt={creative.name}
                                                                 className="w-full h-full object-cover"
                                                             />
-                                                        ) : (
-                                                            <div className="w-full h-full bg-slate-100 flex items-center justify-center">
-                                                                <span className="text-xs text-slate-400">No img</span>
-                                                            </div>
                                                         )}
-                                                        {isSelected && (
-                                                            <div className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center">
-                                                                <div className="bg-emerald-500 rounded-full p-1">
-                                                                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                                    </svg>
-                                                                </div>
+
+                                                        {/* Type Badge */}
+                                                        <div className={`absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${hasVideo ? 'bg-purple-500 text-white' : 'bg-blue-500 text-white'}`}>
+                                                            {hasVideo ? '🎬' : '📷'}
+                                                        </div>
+
+                                                        {/* Remove Button */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setSelectedCreatives(prev => prev.filter(id => id !== creative._id))}
+                                                            className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                                        >
+                                                            <X size={10} />
+                                                        </button>
+
+                                                        {/* Name */}
+                                                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1">
+                                                            <p className="text-[10px] text-white truncate">{creative.name}</p>
+                                                        </div>
+
+                                                        {/* Selected Check */}
+                                                        <div className="absolute inset-0 bg-emerald-500/20 flex items-center justify-center pointer-events-none">
+                                                            <div className="bg-emerald-500 rounded-full p-1 shadow-lg">
+                                                                <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                                </svg>
                                                             </div>
-                                                        )}
-                                                        {creative.media?.videoUrl && (
-                                                            <div className="absolute bottom-1 right-1 bg-black/70 rounded px-1">
-                                                                <span className="text-[10px] text-white">VIDEO</span>
-                                                            </div>
-                                                        )}
-                                                    </button>
+                                                        </div>
+                                                    </div>
                                                 );
-                                            })
+                                            })}
+                                        </div>
                                     )}
                                 </div>
+
+                                {/* Selection summary */}
+                                {selectedCreatives.length > 0 && (
+                                    <div className="mt-2 flex items-center justify-between text-xs">
+                                        <span className="text-emerald-600 font-medium">
+                                            ✓ {selectedCreatives.length} creative{selectedCreatives.length > 1 ? 's' : ''} selected
+                                        </span>
+                                        <button
+                                            onClick={() => setSelectedCreatives([])}
+                                            className="text-red-500 hover:text-red-600"
+                                        >
+                                            Clear all
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Actions */}
@@ -800,6 +992,136 @@ export default function CampaignManagerPage() {
                                 </Button>
                             </div>
                         </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Creative Browser Modal */}
+            {showQuickCreate && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <Card className="w-full max-w-4xl max-h-[85vh] flex flex-col">
+                        <CardHeader className="border-b flex-shrink-0">
+                            <div className="flex items-center justify-between">
+                                <CardTitle className="flex items-center gap-2">
+                                    <Sparkles size={20} className="text-purple-500" />
+                                    Select Creative
+                                </CardTitle>
+                                <button onClick={() => setShowQuickCreate(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="flex gap-3 mt-4">
+                                <div className="flex-1 relative">
+                                    <input
+                                        type="text"
+                                        value={creativeSearch}
+                                        onChange={(e) => setCreativeSearch(e.target.value)}
+                                        placeholder="Search creatives..."
+                                        className="w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-purple-200"
+                                    />
+                                    <svg className="w-5 h-5 absolute left-3 top-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+
+                                <div className="flex bg-slate-100 rounded-lg p-1">
+                                    <button
+                                        onClick={() => setQuickCreativeForm(prev => ({ ...prev, type: 'image' }))}
+                                        className={`px-4 py-2 rounded-md flex items-center gap-2 transition-all ${quickCreativeForm.type === 'image' ? 'bg-white shadow text-blue-600' : 'text-slate-600'}`}
+                                    >
+                                        <Image size={16} /> Images
+                                    </button>
+                                    <button
+                                        onClick={() => setQuickCreativeForm(prev => ({ ...prev, type: 'video' }))}
+                                        className={`px-4 py-2 rounded-md flex items-center gap-2 transition-all ${quickCreativeForm.type === 'video' ? 'bg-white shadow text-purple-600' : 'text-slate-600'}`}
+                                    >
+                                        <Video size={16} /> Videos
+                                    </button>
+                                </div>
+                            </div>
+                        </CardHeader>
+
+                        <CardContent className="p-4 flex-1 overflow-y-auto">
+                            <div className="grid grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                                {(() => {
+                                    const filtered = creatives.filter(c => {
+                                        if (creativeSearch && !c.name.toLowerCase().includes(creativeSearch.toLowerCase())) return false;
+                                        if (quickCreativeForm.type === 'image') return c.media?.imageUrl && !c.media?.videoUrl;
+                                        return c.media?.videoUrl;
+                                    });
+
+                                    if (filtered.length === 0) {
+                                        return (
+                                            <div className="col-span-full text-center py-12">
+                                                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                    {quickCreativeForm.type === 'video' ? <Video size={32} className="text-slate-400" /> : <Image size={32} className="text-slate-400" />}
+                                                </div>
+                                                <p className="text-slate-500">{creativeSearch ? `No ${quickCreativeForm.type}s matching "${creativeSearch}"` : `No ${quickCreativeForm.type} creatives yet`}</p>
+                                                <p className="text-sm text-slate-400 mt-1">Create some in Creative Studio first</p>
+                                            </div>
+                                        );
+                                    }
+
+                                    return filtered.map(creative => {
+                                        const isSelected = selectedCreatives.includes(creative._id);
+                                        const hasVideo = !!creative.media?.videoUrl;
+
+                                        return (
+                                            <button
+                                                key={creative._id}
+                                                type="button"
+                                                onClick={() => {
+                                                    const isMulti = ['carousel', 'stories'].includes(formData.adFormat);
+                                                    if (isMulti) {
+                                                        setSelectedCreatives(prev => isSelected ? prev.filter(id => id !== creative._id) : [...prev, creative._id]);
+                                                    } else {
+                                                        setSelectedCreatives(isSelected ? [] : [creative._id]);
+                                                    }
+                                                }}
+                                                className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all group ${isSelected ? 'border-emerald-500 ring-4 ring-emerald-200' : 'border-transparent hover:border-purple-300 hover:shadow-lg'}`}
+                                            >
+                                                {hasVideo ? (
+                                                    <video src={creative.media?.videoUrl} className="w-full h-full object-cover" muted />
+                                                ) : (
+                                                    <img src={creative.media?.imageUrl} alt={creative.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                                )}
+
+                                                <div className={`absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-medium ${hasVideo ? 'bg-purple-500 text-white' : 'bg-blue-500 text-white'}`}>
+                                                    {hasVideo ? '🎬' : '📷'}
+                                                </div>
+
+                                                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 pt-6">
+                                                    <p className="text-xs text-white font-medium truncate">{creative.name}</p>
+                                                </div>
+
+                                                {isSelected && (
+                                                    <div className="absolute inset-0 bg-emerald-500/30 flex items-center justify-center">
+                                                        <div className="bg-emerald-500 rounded-full p-2 shadow-lg">
+                                                            <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                            </svg>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    });
+                                })()}
+                            </div>
+                        </CardContent>
+
+                        <div className="border-t p-4 flex items-center justify-between bg-slate-50 flex-shrink-0">
+                            <span className="text-sm text-slate-600">
+                                {selectedCreatives.length > 0 ? `✓ ${selectedCreatives.length} selected` : 'Click to select'}
+                            </span>
+                            <div className="flex gap-3">
+                                <Button variant="outline" onClick={() => setShowQuickCreate(false)}>Cancel</Button>
+                                <Button onClick={() => setShowQuickCreate(false)} className="bg-emerald-600 hover:bg-emerald-700" disabled={selectedCreatives.length === 0}>
+                                    Done ({selectedCreatives.length})
+                                </Button>
+                            </div>
+                        </div>
                     </Card>
                 </div>
             )}

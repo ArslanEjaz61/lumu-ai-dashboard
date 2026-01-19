@@ -310,8 +310,10 @@ export default function CreativeStudioPage() {
             description: creative.content?.description || '',
             primaryText: creative.content?.primaryText || '',
             callToAction: creative.content?.callToAction || 'shop_now',
+            destinationUrl: (creative as any).destinationUrl || '',
             language: creative.content?.language || 'english',
             imageUrl: creative.media?.imageUrl || '',
+            videoUrl: creative.media?.videoUrl || '',
             platforms: creative.usage?.platforms || ['facebook', 'instagram'],
             usageType: creative.usage?.usageType || 'ad',
             prompt: '',
@@ -338,7 +340,8 @@ export default function CreativeStudioPage() {
                         language: formData.language
                     },
                     media: {
-                        imageUrl: formData.imageUrl
+                        imageUrl: formData.type === 'image' ? formData.imageUrl : '',
+                        videoUrl: formData.type === 'video' ? formData.videoUrl : ''
                     },
                     usage: {
                         usageType: formData.usageType,
@@ -1110,10 +1113,10 @@ export default function CreativeStudioPage() {
                                 {/* Status & Type Badges */}
                                 <div className="absolute top-4 left-4 z-20 flex gap-2">
                                     <span className={`px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-sm shadow-lg ${viewingCreative.status === 'live'
-                                            ? 'bg-emerald-500/90 text-white'
-                                            : viewingCreative.status === 'draft'
-                                                ? 'bg-slate-600/90 text-white'
-                                                : 'bg-orange-500/90 text-white'
+                                        ? 'bg-emerald-500/90 text-white'
+                                        : viewingCreative.status === 'draft'
+                                            ? 'bg-slate-600/90 text-white'
+                                            : 'bg-orange-500/90 text-white'
                                         }`}>
                                         {viewingCreative.status?.toUpperCase()}
                                     </span>
@@ -1242,14 +1245,14 @@ export default function CreativeStudioPage() {
                                                     <span
                                                         key={platform}
                                                         className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 ${platform === 'facebook'
-                                                                ? 'bg-blue-100 text-blue-700'
-                                                                : platform === 'instagram'
-                                                                    ? 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700'
-                                                                    : platform === 'google'
+                                                            ? 'bg-blue-100 text-blue-700'
+                                                            : platform === 'instagram'
+                                                                ? 'bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700'
+                                                                : platform === 'google'
+                                                                    ? 'bg-red-100 text-red-700'
+                                                                    : platform === 'youtube'
                                                                         ? 'bg-red-100 text-red-700'
-                                                                        : platform === 'youtube'
-                                                                            ? 'bg-red-100 text-red-700'
-                                                                            : 'bg-slate-100 text-slate-700'
+                                                                        : 'bg-slate-100 text-slate-700'
                                                             }`}
                                                     >
                                                         {platform === 'facebook' && <Facebook size={14} />}

@@ -163,6 +163,12 @@ const CampaignSchema = new mongoose.Schema({
         createdAt: { type: Date, default: Date.now }
     }],
 
+    // Selected Creatives for this campaign
+    creatives: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'AdCreative'
+    }],
+
     // Relations
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
