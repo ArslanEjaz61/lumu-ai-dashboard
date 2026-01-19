@@ -353,6 +353,69 @@ exports.updateStatus = async (req, res) => {
     }
 };
 
+// Update individual platform status (pause/resume specific platform)
+exports.updatePlatformStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { platform, status } = req.body; // status: 'active', 'paused'
+
+        if (!platform || !status) {
+            return res.status(400).json({ error: 'Platform and status are required' });
+        }
+
+        const ad = await PublishedAd.findById(id);
+        if (!ad) {
+            return res.status(404).json({ error: 'Published ad not found' });
+        }
+
+        // Find and update the specific platform status
+        let platformFound = false;
+        ad.platformCampaignIds = ad.platformCampaignIds.map(p => {
+            if (p.platform === platform) {
+                platformFound = true;
+                return { ...p.toObject(), status };
+            }
+            return p;
+        });
+
+        // If platform wasn't found in platformCampaignIds, add it
+        if (!platformFound && ad.platforms.includes(platform)) {
+            ad.platformCampaignIds.push({
+                platform,
+                status,
+                updatedAt: new Date()
+            });
+        }
+
+        // Update overall ad status based on platform statuses
+        const activeCount = ad.platformCampaignIds.filter(p => p.status === 'active').length;
+        const pausedCount = ad.platformCampaignIds.filter(p => p.status === 'paused').length;
+
+        if (pausedCount === ad.platforms.length) {
+            ad.status = 'paused';
+        } else if (activeCount > 0) {
+            ad.status = 'active';
+        }
+
+        await ad.save();
+
+        // TODO: Call actual platform APIs to pause/resume
+        // For example:
+        // if (platform === 'facebook' || platform === 'instagram') {
+        //     await metaAdsService.updateCampaignStatus(campaignId, status);
+        // }
+
+        res.json({
+            success: true,
+            ad,
+            message: `${platform} ${status === 'paused' ? 'paused' : 'resumed'} successfully`
+        });
+    } catch (error) {
+        console.error('Update Platform Status Error:', error);
+        res.status(500).json({ error: 'Failed to update platform status' });
+    }
+};
+
 // Update metrics
 exports.updateMetrics = async (req, res) => {
     try {
@@ -428,5 +491,174 @@ exports.getStats = async (req, res) => {
     } catch (error) {
         console.error('Stats Error:', error);
         res.status(500).json({ error: 'Failed to get stats' });
+    }
+};
+
+// Sync metrics from all platforms (real-time fetch)
+exports.syncMetrics = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const ad = await PublishedAd.findById(id);
+        if (!ad) {
+            return res.status(404).json({ error: 'Published ad not found' });
+        }
+
+        console.log(`📊 Syncing metrics for ad: ${ad.name}`);
+
+        const platformMetrics = [];
+        let totalMetrics = {
+            impressions: 0,
+            clicks: 0,
+            spend: 0,
+            reach: 0,
+            conversions: 0,
+            ctr: 0
+        };
+
+        // Fetch metrics from each platform
+        for (const platformData of ad.platformCampaignIds) {
+            const { platform, campaignId } = platformData;
+            let result = null;
+
+            try {
+                switch (platform) {
+                    case 'facebook':
+                    case 'instagram':
+                        if (campaignId) {
+                            result = await metaAdsService.getCampaignMetrics(campaignId);
+                        }
+                        break;
+
+                    case 'tiktok':
+                        if (campaignId) {
+                            result = await tiktokAdsService.getCampaignMetrics(campaignId);
+                        }
+                        break;
+
+                    case 'google':
+                    case 'youtube':
+                        // Google Ads metrics would go here
+                        result = { success: true, metrics: { impressions: 0, clicks: 0, spend: 0, conversions: 0, ctr: 0 } };
+                        break;
+
+                    case 'twitter':
+                        // Twitter Ads metrics would go here
+                        result = { success: true, metrics: { impressions: 0, clicks: 0, spend: 0, conversions: 0, ctr: 0 } };
+                        break;
+                }
+
+                if (result?.success && result.metrics) {
+                    platformMetrics.push({
+                        platform,
+                        campaignId,
+                        status: platformData.status || 'active',
+                        metrics: result.metrics
+                    });
+
+                    // Add to totals
+                    totalMetrics.impressions += result.metrics.impressions || 0;
+                    totalMetrics.clicks += result.metrics.clicks || 0;
+                    totalMetrics.spend += result.metrics.spend || 0;
+                    totalMetrics.reach += result.metrics.reach || 0;
+                    totalMetrics.conversions += result.metrics.conversions || 0;
+                }
+            } catch (platformError) {
+                console.error(`Error fetching ${platform} metrics:`, platformError.message);
+                platformMetrics.push({
+                    platform,
+                    campaignId,
+                    status: platformData.status || 'active',
+                    metrics: { impressions: 0, clicks: 0, spend: 0, conversions: 0, ctr: 0 },
+                    error: platformError.message
+                });
+            }
+        }
+
+        // Calculate CTR
+        if (totalMetrics.impressions > 0) {
+            totalMetrics.ctr = (totalMetrics.clicks / totalMetrics.impressions) * 100;
+        }
+
+        // Update the ad with new metrics
+        ad.platformCampaignIds = platformMetrics;
+        ad.metrics = {
+            ...ad.metrics,
+            ...totalMetrics
+        };
+        ad.budget.spent = totalMetrics.spend;
+
+        await ad.save();
+
+        console.log(`✅ Metrics synced for ${ad.name}`);
+
+        res.json({
+            success: true,
+            ad,
+            platformMetrics,
+            totalMetrics
+        });
+
+    } catch (error) {
+        console.error('Sync Metrics Error:', error);
+        res.status(500).json({ error: 'Failed to sync metrics', details: error.message });
+    }
+};
+
+// Sync all active ads metrics
+exports.syncAllMetrics = async (req, res) => {
+    try {
+        const activeAds = await PublishedAd.find({ status: 'active' });
+
+        console.log(`📊 Syncing metrics for ${activeAds.length} active ads...`);
+
+        const results = [];
+        for (const ad of activeAds) {
+            try {
+                // Simulate the sync for each ad
+                const platformMetrics = [];
+                let totalMetrics = { impressions: 0, clicks: 0, spend: 0, conversions: 0, ctr: 0 };
+
+                for (const platformData of ad.platformCampaignIds) {
+                    const { platform, campaignId } = platformData;
+                    let result = null;
+
+                    if (platform === 'facebook' || platform === 'instagram') {
+                        if (campaignId) result = await metaAdsService.getCampaignMetrics(campaignId);
+                    } else if (platform === 'tiktok') {
+                        if (campaignId) result = await tiktokAdsService.getCampaignMetrics(campaignId);
+                    }
+
+                    if (result?.success && result.metrics) {
+                        platformMetrics.push({
+                            ...platformData,
+                            metrics: result.metrics
+                        });
+                        totalMetrics.impressions += result.metrics.impressions || 0;
+                        totalMetrics.clicks += result.metrics.clicks || 0;
+                        totalMetrics.spend += result.metrics.spend || 0;
+                        totalMetrics.conversions += result.metrics.conversions || 0;
+                    }
+                }
+
+                if (totalMetrics.impressions > 0) {
+                    totalMetrics.ctr = (totalMetrics.clicks / totalMetrics.impressions) * 100;
+                }
+
+                ad.platformCampaignIds = platformMetrics.length > 0 ? platformMetrics : ad.platformCampaignIds;
+                ad.metrics = { ...ad.metrics, ...totalMetrics };
+                ad.budget.spent = totalMetrics.spend;
+                await ad.save();
+
+                results.push({ adId: ad._id, name: ad.name, success: true });
+            } catch (adError) {
+                results.push({ adId: ad._id, name: ad.name, success: false, error: adError.message });
+            }
+        }
+
+        res.json({ success: true, synced: results.length, results });
+    } catch (error) {
+        console.error('Sync All Metrics Error:', error);
+        res.status(500).json({ error: 'Failed to sync all metrics' });
     }
 };

@@ -53,22 +53,21 @@ interface Campaign {
         gender: string;
         interests: string[];
     };
-}
-
-interface Creative {
-    _id: string;
-    name: string;
-    content?: {
-        headline: string;
-        description: string;
-        primaryText: string;
-    };
-    media?: {
-        imageUrl: string;
-    };
-    usage?: {
-        platforms: string[];
-    };
+    adFormat?: string;
+    creatives?: Array<{
+        _id: string;
+        name: string;
+        creativeType?: string;
+        media?: {
+            imageUrl?: string;
+            videoUrl?: string;
+            thumbnailUrl?: string;
+        };
+        content?: {
+            headline?: string;
+            description?: string;
+        };
+    }>;
 }
 
 const platformIcons: { [key: string]: any } = {
@@ -101,11 +100,9 @@ const allPlatforms = [
 export default function PublishPage() {
     // Selection states
     const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
-    const [selectedCreative, setSelectedCreative] = useState<Creative | null>(null);
 
     // Data states
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-    const [creatives, setCreatives] = useState<Creative[]>([]);
 
     // UI states
     const [loading, setLoading] = useState(true);
@@ -116,7 +113,6 @@ export default function PublishPage() {
 
     // Modal states
     const [showCampaignModal, setShowCampaignModal] = useState(false);
-    const [showCreativeModal, setShowCreativeModal] = useState(false);
     const [showAnalyticsModal, setShowAnalyticsModal] = useState(false);
 
     // Schedule
@@ -141,15 +137,10 @@ export default function PublishPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            // Fetch campaigns
+            // Fetch campaigns (with creatives populated)
             const campaignsRes = await fetch(`${API_URL}/campaigns`);
             const campaignsData = await campaignsRes.json();
             setCampaigns(Array.isArray(campaignsData) ? campaignsData : []);
-
-            // Fetch creatives
-            const creativesRes = await fetch(`${API_URL}/creatives`);
-            const creativesData = await creativesRes.json();
-            setCreatives(Array.isArray(creativesData) ? creativesData : []);
         } catch (err) {
             console.error('Failed to fetch data:', err);
         } finally {
@@ -175,7 +166,7 @@ export default function PublishPage() {
             const payload = {
                 name: selectedCampaign.name,
                 campaignId: selectedCampaign._id,
-                platforms: selectedPlatforms, // Use selectedPlatforms from state
+                platforms: selectedPlatforms,
                 budget: selectedCampaign.budget,
                 targeting: {
                     ageMin: selectedCampaign.targeting?.ageRange?.min || 18,
@@ -183,11 +174,12 @@ export default function PublishPage() {
                     gender: selectedCampaign.targeting?.gender || 'all',
                     cities: selectedCampaign.targeting?.locations?.map(l => l.city) || []
                 },
-                creativeId: selectedCreative?._id,
-                creative: selectedCreative ? {
-                    headline: selectedCreative.content?.headline || selectedCreative.name,
-                    description: selectedCreative.content?.description || selectedCreative.content?.primaryText,
-                    image: selectedCreative.media?.imageUrl,
+                creativeIds: selectedCampaign.creatives?.map(c => c._id) || [],
+                creative: selectedCampaign.creatives?.[0] ? {
+                    headline: selectedCampaign.creatives[0].content?.headline || selectedCampaign.creatives[0].name,
+                    description: selectedCampaign.creatives[0].content?.description || selectedCampaign.description,
+                    image: selectedCampaign.creatives[0].media?.imageUrl,
+                    video: selectedCampaign.creatives[0].media?.videoUrl,
                     cta: 'Shop Now'
                 } : null,
                 publishMode,
@@ -220,7 +212,6 @@ export default function PublishPage() {
         setPublished(false);
         setPublishResult(null);
         setSelectedCampaign(null);
-        setSelectedCreative(null);
         setSelectedPlatforms(['facebook', 'instagram']);
         setError('');
     };
@@ -373,68 +364,13 @@ export default function PublishPage() {
                             </CardContent>
                         </Card>
 
-                        {/* Step 2: Select Creative */}
-                        <Card className={selectedCreative ? 'border-emerald-300 bg-emerald-50/30' : ''}>
-                            <CardHeader>
-                                <CardTitle className="text-lg flex items-center justify-between">
-                                    <span className="flex items-center gap-2">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${selectedCreative ? 'bg-emerald-500' : 'bg-purple-500'}`}>
-                                            {selectedCreative ? <Check size={16} /> : '2'}
-                                        </div>
-                                        Select Creative
-                                    </span>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setShowCreativeModal(true)}
-                                    >
-                                        {selectedCreative ? 'Change' : 'Browse Creatives'}
-                                    </Button>
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                {selectedCreative ? (
-                                    <div className="flex gap-4 p-4 bg-white rounded-lg border border-emerald-200">
-                                        <div className="w-32 h-32 rounded-lg bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white text-xs overflow-hidden">
-                                            {selectedCreative.media?.imageUrl ? (
-                                                <img
-                                                    src={selectedCreative.media.imageUrl}
-                                                    alt={selectedCreative.name}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                            ) : (
-                                                '[Preview]'
-                                            )}
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="font-semibold text-lg">{selectedCreative.name}</p>
-                                            <p className="text-sm text-slate-600 mt-1">{selectedCreative.content?.headline}</p>
-                                            <p className="text-xs text-slate-500 mt-2 line-clamp-2">{selectedCreative.content?.description || selectedCreative.content?.primaryText}</p>
-                                        </div>
-                                        <button onClick={() => setSelectedCreative(null)} className="text-slate-400 hover:text-red-500 self-start">
-                                            <X size={18} />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div
-                                        onClick={() => setShowCreativeModal(true)}
-                                        className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-all"
-                                    >
-                                        <Image size={40} className="mx-auto text-slate-400 mb-2" />
-                                        <p className="text-slate-600 font-medium">Select a Creative</p>
-                                        <p className="text-xs text-slate-400 mt-1">From your Creative Studio library</p>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* Step 3: Select Platforms */}
+                        {/* Step 2: Select Platforms */}
                         <Card className={selectedPlatforms.length > 0 ? 'border-emerald-300 bg-emerald-50/30' : ''}>
                             <CardHeader>
                                 <CardTitle className="text-lg flex items-center justify-between">
                                     <span className="flex items-center gap-2">
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${selectedPlatforms.length > 0 ? 'bg-emerald-500' : 'bg-purple-500'}`}>
-                                            {selectedPlatforms.length > 0 ? <Check size={16} /> : '3'}
+                                            {selectedPlatforms.length > 0 ? <Check size={16} /> : '2'}
                                         </div>
                                         Select Platforms
                                     </span>
@@ -479,11 +415,11 @@ export default function PublishPage() {
                             </CardContent>
                         </Card>
 
-                        {/* Step 4: When to Publish */}
+                        {/* Step 3: When to Publish */}
                         <Card>
                             <CardHeader>
                                 <CardTitle className="text-lg flex items-center gap-2">
-                                    <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold">4</div>
+                                    <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-white font-bold">3</div>
                                     When to Publish
                                 </CardTitle>
                             </CardHeader>
@@ -554,24 +490,72 @@ export default function PublishPage() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="rounded-lg border overflow-hidden">
-                                    <div className="h-40 bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold overflow-hidden">
-                                        {selectedCreative?.media?.imageUrl ? (
-                                            <img src={selectedCreative.media.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                {selectedCampaign?.creatives && selectedCampaign.creatives.length > 0 ? (
+                                    <div className="rounded-lg border overflow-hidden">
+                                        {/* Carousel for multiple creatives */}
+                                        {selectedCampaign.adFormat === 'carousel' && selectedCampaign.creatives.length > 1 ? (
+                                            <div className="relative">
+                                                <div className="flex overflow-x-auto snap-x snap-mandatory gap-2 p-2 bg-slate-100">
+                                                    {selectedCampaign.creatives.map((creative, idx) => (
+                                                        <div key={creative._id} className="flex-shrink-0 w-40 snap-center">
+                                                            <div className="h-40 rounded-lg overflow-hidden bg-white border">
+                                                                {creative.media?.imageUrl ? (
+                                                                    <img src={creative.media.imageUrl} alt={creative.name} className="w-full h-full object-cover" />
+                                                                ) : creative.media?.videoUrl ? (
+                                                                    <video src={creative.media.videoUrl} className="w-full h-full object-cover" muted />
+                                                                ) : (
+                                                                    <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">No media</div>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-xs text-center mt-1 truncate">{creative.name}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-black/60 px-2 py-1 rounded text-xs text-white">
+                                                    🎠 Carousel ({selectedCampaign.creatives.length} slides)
+                                                </div>
+                                            </div>
                                         ) : (
-                                            '[Select Creative]'
+                                            /* Single image/video preview */
+                                            <div className="h-48 bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white font-bold overflow-hidden">
+                                                {selectedCampaign.creatives[0]?.media?.videoUrl ? (
+                                                    <video
+                                                        src={selectedCampaign.creatives[0].media.videoUrl}
+                                                        className="w-full h-full object-cover"
+                                                        controls
+                                                        muted
+                                                    />
+                                                ) : selectedCampaign.creatives[0]?.media?.imageUrl ? (
+                                                    <img src={selectedCampaign.creatives[0].media.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    '[No Media]'
+                                                )}
+                                            </div>
                                         )}
+                                        <div className="p-3">
+                                            <p className="font-semibold text-sm">
+                                                {selectedCampaign.creatives[0]?.content?.headline || selectedCampaign.creatives[0]?.name || selectedCampaign.name}
+                                            </p>
+                                            <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                                                {selectedCampaign.creatives[0]?.content?.description || selectedCampaign.description || 'Ad description will appear here'}
+                                            </p>
+                                            <Button size="sm" className="w-full mt-3 bg-blue-600">Shop Now</Button>
+                                        </div>
                                     </div>
-                                    <div className="p-3">
-                                        <p className="font-semibold text-sm">
-                                            {selectedCreative?.content?.headline || selectedCreative?.name || 'Ad Headline'}
-                                        </p>
-                                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                                            {selectedCreative?.content?.description || 'Ad description will appear here'}
-                                        </p>
-                                        <Button size="sm" className="w-full mt-3 bg-blue-600">Shop Now</Button>
+                                ) : (
+                                    <div className="rounded-lg border overflow-hidden">
+                                        <div className="h-40 bg-gradient-to-br from-slate-200 to-slate-300 flex flex-col items-center justify-center text-slate-500">
+                                            <Image size={32} className="mb-2 opacity-50" />
+                                            <p className="text-sm font-medium">No Creatives</p>
+                                            <p className="text-xs">Select a campaign with creatives</p>
+                                        </div>
+                                        <div className="p-3">
+                                            <p className="font-semibold text-sm">{selectedCampaign?.name || 'Select Campaign'}</p>
+                                            <p className="text-xs text-slate-500 mt-1">Ad preview will appear here</p>
+                                            <Button size="sm" className="w-full mt-3 bg-blue-600" disabled>Shop Now</Button>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </CardContent>
                         </Card>
 
@@ -586,8 +570,8 @@ export default function PublishPage() {
                                     <span className="font-medium truncate max-w-[140px]">{selectedCampaign?.name || 'Not selected'}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-slate-400">Creative</span>
-                                    <span className="font-medium truncate max-w-[140px]">{selectedCreative?.name || 'Not selected'}</span>
+                                    <span className="text-slate-400">Creatives</span>
+                                    <span className="font-medium">{selectedCampaign?.creatives?.length || 0} attached</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-400">Platforms</span>
@@ -677,52 +661,6 @@ export default function PublishPage() {
                 </div>
             )}
 
-            {/* Creative Selection Modal */}
-            {showCreativeModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-xl max-w-3xl w-full max-h-[80vh] overflow-hidden">
-                        <div className="p-4 border-b flex items-center justify-between">
-                            <h3 className="text-lg font-semibold">Select Creative</h3>
-                            <button onClick={() => setShowCreativeModal(false)} className="text-slate-500 hover:text-slate-700">
-                                <X size={20} />
-                            </button>
-                        </div>
-                        <div className="p-4 overflow-y-auto max-h-[60vh]">
-                            {creatives.length === 0 ? (
-                                <div className="text-center py-8">
-                                    <Image size={48} className="mx-auto text-slate-300 mb-2" />
-                                    <p className="text-slate-500">No creatives found</p>
-                                    <p className="text-xs text-slate-400">Create ads in Creative Studio first</p>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                    {creatives.map((creative) => (
-                                        <button
-                                            key={creative._id}
-                                            onClick={() => {
-                                                setSelectedCreative(creative);
-                                                setShowCreativeModal(false);
-                                            }}
-                                            className={`p-3 rounded-lg border-2 text-left transition-all hover:border-purple-400 ${selectedCreative?._id === creative._id ? 'border-purple-500 bg-purple-50' : 'border-slate-200'
-                                                }`}
-                                        >
-                                            <div className="aspect-video rounded bg-gradient-to-br from-purple-400 to-pink-500 mb-2 overflow-hidden">
-                                                {creative.media?.imageUrl ? (
-                                                    <img src={creative.media.imageUrl} alt={creative.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-white text-xs">[Preview]</div>
-                                                )}
-                                            </div>
-                                            <p className="font-medium text-sm truncate">{creative.name}</p>
-                                            <p className="text-xs text-slate-500 truncate">{creative.content?.headline}</p>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* Analytics Modal - Professional Dashboard */}
             {showAnalyticsModal && (

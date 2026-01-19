@@ -279,6 +279,86 @@ class TikTokAdsService {
         // Pakistan country code in TikTok
         return ['6252001']; // Pakistan
     }
+
+    // Get campaign metrics (real-time from TikTok Reporting API)
+    async getCampaignMetrics(campaignId) {
+        try {
+            await this.loadCredentials();
+
+            const response = await axios.get(
+                `${TIKTOK_API_BASE}/report/integrated/get/`,
+                {
+                    params: {
+                        advertiser_id: this.credentials.advertiserId,
+                        service_type: 'AUCTION',
+                        report_type: 'BASIC',
+                        data_level: 'AUCTION_CAMPAIGN',
+                        dimensions: '["campaign_id"]',
+                        metrics: '["spend","impressions","clicks","conversion","ctr","cpc","cpm","reach"]',
+                        filters: JSON.stringify([{ field_name: 'campaign_id', filter_type: 'IN', filter_value: [campaignId] }]),
+                        start_date: '2024-01-01',
+                        end_date: new Date().toISOString().split('T')[0]
+                    },
+                    headers: this.getHeaders()
+                }
+            );
+
+            if (response.data.code !== 0) {
+                throw new Error(response.data.message);
+            }
+
+            const data = response.data.data?.list?.[0]?.metrics || {};
+
+            return {
+                success: true,
+                platform: 'tiktok',
+                metrics: {
+                    impressions: parseInt(data.impressions || 0),
+                    clicks: parseInt(data.clicks || 0),
+                    spend: parseFloat(data.spend || 0),
+                    reach: parseInt(data.reach || 0),
+                    ctr: parseFloat(data.ctr || 0) * 100, // Convert to percentage
+                    cpc: parseFloat(data.cpc || 0),
+                    cpm: parseFloat(data.cpm || 0),
+                    conversions: parseInt(data.conversion || 0)
+                }
+            };
+        } catch (error) {
+            console.error('TikTok getCampaignMetrics Error:', error.response?.data || error.message);
+            return {
+                success: false,
+                platform: 'tiktok',
+                error: error.message,
+                metrics: { impressions: 0, clicks: 0, spend: 0, reach: 0, ctr: 0, cpc: 0, conversions: 0 }
+            };
+        }
+    }
+
+    // Update campaign status (pause/resume)
+    async updateCampaignStatus(campaignId, status) {
+        try {
+            await this.loadCredentials();
+
+            const response = await axios.post(
+                `${TIKTOK_API_BASE}/campaign/update/status/`,
+                {
+                    advertiser_id: this.credentials.advertiserId,
+                    campaign_ids: [campaignId],
+                    opt_status: status === 'active' ? 'ENABLE' : 'DISABLE'
+                },
+                { headers: this.getHeaders() }
+            );
+
+            if (response.data.code !== 0) {
+                throw new Error(response.data.message);
+            }
+
+            return { success: true, platform: 'tiktok' };
+        } catch (error) {
+            console.error('TikTok updateCampaignStatus Error:', error.message);
+            return { success: false, platform: 'tiktok', error: error.message };
+        }
+    }
 }
 
 module.exports = new TikTokAdsService();

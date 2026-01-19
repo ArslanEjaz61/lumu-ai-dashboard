@@ -18,6 +18,7 @@ import {
     Cloud,
     Target,
     RefreshCw,
+    Play,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ const navItems = [
     { href: "/studio", label: "Creative Studio", icon: Sparkles },
     { href: "/campaigns", label: "Campaigns", icon: Megaphone },
     { href: "/publish", label: "Publish Ads", icon: Rocket },
+    { href: "/running-ads", label: "Running Ads", icon: Play },
     { href: "/budget", label: "Budget AI", icon: DollarSign },
     { href: "/audience", label: "Audience", icon: Users },
     { href: "/geo", label: "Geo Analytics", icon: MapPin },

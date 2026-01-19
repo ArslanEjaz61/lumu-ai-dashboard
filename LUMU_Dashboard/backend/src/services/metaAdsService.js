@@ -224,6 +224,78 @@ class MetaAdsService {
             return [];
         }
     }
+
+    // Get campaign metrics (real-time from Meta Insights API)
+    async getCampaignMetrics(campaignId) {
+        try {
+            await this.loadCredentials();
+
+            const response = await axios.get(
+                `${META_API_BASE}/${campaignId}/insights`,
+                {
+                    params: {
+                        access_token: this.credentials.accessToken,
+                        fields: 'impressions,clicks,spend,reach,ctr,cpc,cpm,conversions,actions',
+                        date_preset: 'lifetime'
+                    }
+                }
+            );
+
+            const data = response.data.data?.[0] || {};
+
+            // Parse conversions from actions array
+            let conversions = 0;
+            if (data.actions) {
+                const purchaseAction = data.actions.find(a =>
+                    a.action_type === 'purchase' ||
+                    a.action_type === 'omni_purchase' ||
+                    a.action_type === 'lead'
+                );
+                conversions = parseInt(purchaseAction?.value || 0);
+            }
+
+            return {
+                success: true,
+                platform: 'meta',
+                metrics: {
+                    impressions: parseInt(data.impressions || 0),
+                    clicks: parseInt(data.clicks || 0),
+                    spend: parseFloat(data.spend || 0),
+                    reach: parseInt(data.reach || 0),
+                    ctr: parseFloat(data.ctr || 0),
+                    cpc: parseFloat(data.cpc || 0),
+                    cpm: parseFloat(data.cpm || 0),
+                    conversions: conversions
+                }
+            };
+        } catch (error) {
+            console.error('Meta getCampaignMetrics Error:', error.response?.data || error.message);
+            return {
+                success: false,
+                platform: 'meta',
+                error: error.message,
+                metrics: { impressions: 0, clicks: 0, spend: 0, reach: 0, ctr: 0, cpc: 0, conversions: 0 }
+            };
+        }
+    }
+
+    // Update campaign status (pause/resume)
+    async updateCampaignStatus(campaignId, status) {
+        try {
+            await this.loadCredentials();
+
+            const response = await axios.post(
+                `${META_API_BASE}/${campaignId}`,
+                { status: status === 'active' ? 'ACTIVE' : 'PAUSED' },
+                { params: { access_token: this.credentials.accessToken } }
+            );
+
+            return { success: true, platform: 'meta' };
+        } catch (error) {
+            console.error('Meta updateCampaignStatus Error:', error.message);
+            return { success: false, platform: 'meta', error: error.message };
+        }
+    }
 }
 
 module.exports = new MetaAdsService();
