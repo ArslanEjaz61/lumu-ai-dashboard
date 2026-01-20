@@ -18,6 +18,8 @@ import {
     Users,
     Edit2,
     ChevronDown,
+    Upload,
+    Image,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { api, SettingsData, UserData } from "@/lib/api";
@@ -83,6 +85,40 @@ export default function SettingsPage() {
     // Add user modal
     const [showAddModal, setShowAddModal] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
+    const [uploadingLogo, setUploadingLogo] = useState(false);
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+    // Handle logo file upload
+    const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingLogo(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch(`${API_URL}/upload`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                // Use full URL for the logo (backend serves uploads)
+                const fullUrl = `${API_URL.replace('/api', '')}${data.url}`;
+                setBranding({ ...branding, logoUrl: fullUrl });
+                setMessage({ type: 'success', text: 'Logo uploaded successfully!' });
+            } else {
+                setMessage({ type: 'error', text: 'Failed to upload logo' });
+            }
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Failed to upload logo' });
+        } finally {
+            setUploadingLogo(false);
+        }
+    };
 
     useEffect(() => {
         fetchSettings();
@@ -314,7 +350,7 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                     {/* Ad Platforms Header */}
                     <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Ad Platforms</h3>
-                    
+
                     {/* Meta Ads Row */}
                     <div className="border rounded-lg overflow-hidden">
                         <button
@@ -615,8 +651,56 @@ export default function SettingsPage() {
                                     className="w-full px-3 py-2 border rounded-lg bg-white text-sm focus:ring-2 focus:ring-emerald-500"
                                 />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-sm font-medium text-slate-600">Logo URL (optional)</label>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-600">Logo</label>
+
+                                {/* Logo Preview */}
+                                {branding.logoUrl && (
+                                    <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg">
+                                        <img
+                                            src={branding.logoUrl}
+                                            alt="Logo Preview"
+                                            className="w-16 h-16 object-contain rounded"
+                                        />
+                                        <div className="flex-1">
+                                            <p className="text-sm text-slate-600 truncate">{branding.logoUrl}</p>
+                                            <button
+                                                onClick={() => setBranding({ ...branding, logoUrl: '' })}
+                                                className="text-xs text-red-500 hover:underline mt-1"
+                                            >
+                                                Remove Logo
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Upload Button */}
+                                <div className="flex gap-2">
+                                    <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                                        {uploadingLogo ? (
+                                            <Loader2 size={18} className="animate-spin text-slate-500" />
+                                        ) : (
+                                            <Upload size={18} className="text-slate-500" />
+                                        )}
+                                        <span className="text-sm text-slate-600">
+                                            {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
+                                        </span>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleLogoUpload}
+                                            className="hidden"
+                                            disabled={uploadingLogo}
+                                        />
+                                    </label>
+                                </div>
+
+                                {/* Or enter URL */}
+                                <div className="flex items-center gap-2 text-xs text-slate-400">
+                                    <div className="flex-1 h-px bg-slate-200" />
+                                    <span>or enter URL</span>
+                                    <div className="flex-1 h-px bg-slate-200" />
+                                </div>
                                 <input
                                     type="text"
                                     value={branding.logoUrl}

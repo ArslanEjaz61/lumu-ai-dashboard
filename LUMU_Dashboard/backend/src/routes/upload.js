@@ -40,6 +40,28 @@ const upload = multer({
     }
 });
 
+// Generic upload (for any file - used for logo upload etc)
+router.post('/', upload.single('file'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const fileUrl = `/uploads/${req.file.filename}`;
+        res.json({
+            success: true,
+            url: fileUrl,
+            filename: req.file.filename,
+            originalName: req.file.originalname,
+            size: req.file.size,
+            mimetype: req.file.mimetype
+        });
+    } catch (error) {
+        console.error('Upload Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Upload single image
 router.post('/image', upload.single('image'), (req, res) => {
     try {

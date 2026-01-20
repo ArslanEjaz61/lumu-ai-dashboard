@@ -91,16 +91,20 @@ export function Sidebar() {
             >
                 {/* Logo */}
                 <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-700">
-                    <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg"
-                        style={{ background: `linear-gradient(135deg, ${branding.primaryColor}, #06b6d4)` }}
-                    >
-                        {branding.logoUrl ? (
-                            <img src={branding.logoUrl} alt="Logo" className="w-8 h-8 rounded" />
-                        ) : (
-                            branding.dashboardName.charAt(0).toUpperCase()
-                        )}
-                    </div>
+                    {branding.logoUrl ? (
+                        <img 
+                            src={branding.logoUrl} 
+                            alt={branding.dashboardName} 
+                            className="w-10 h-10 object-contain rounded-lg"
+                        />
+                    ) : (
+                        <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg"
+                            style={{ background: `linear-gradient(135deg, ${branding.primaryColor}, #06b6d4)` }}
+                        >
+                            {branding.dashboardName.charAt(0).toUpperCase()}
+                        </div>
+                    )}
                     <div>
                         <h1 className="font-bold text-lg">{branding.dashboardName}</h1>
                         <p className="text-xs text-slate-400">{branding.tagline}</p>
