@@ -2,10 +2,10 @@
   "name": "lumu-dashboard-backend",
   "version": "1.0.0",
   "description": "LUMU AI Dashboard Backend - Marketing Analytics API",
-  "main": "src/index.js",
+  "main": "index.js",
   "scripts": {
-    "start": "nodemon src/index.js",
-    "dev": "node --watch src/index.js",
+    "start": "nodemon index.js",
+    "dev": "node --watch index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
