@@ -205,8 +205,8 @@ export default function AudiencePage() {
                                     key={segment.id}
                                     onClick={() => setActiveSegment(activeSegment === segment.id ? null : segment.id)}
                                     className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${activeSegment === segment.id
-                                            ? 'border-emerald-500 bg-emerald-50 shadow-lg'
-                                            : 'border-slate-200 hover:border-slate-300'
+                                        ? 'border-emerald-500 bg-emerald-50 shadow-lg'
+                                        : 'border-slate-200 hover:border-slate-300'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3 mb-3">
@@ -268,7 +268,7 @@ export default function AudiencePage() {
                                             borderRadius: "8px",
                                             color: "#fff",
                                         }}
-                                        formatter={(value: number) => value.toLocaleString()}
+                                        formatter={(value) => value?.toLocaleString() ?? '0'}
                                     />
                                     <Bar dataKey="users" fill="#10b981" radius={[0, 4, 4, 0]} name="Users" />
                                 </BarChart>

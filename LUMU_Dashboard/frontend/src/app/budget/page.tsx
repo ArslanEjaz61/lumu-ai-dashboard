@@ -32,6 +32,8 @@ interface BudgetAllocation {
     spent: number;
     remaining: number;
     color: string;
+    value?: number;
+    [key: string]: string | number | undefined;
 }
 
 interface DayNightData {
