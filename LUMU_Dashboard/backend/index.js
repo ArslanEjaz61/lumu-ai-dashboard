@@ -6,22 +6,22 @@ const path = require('path');
 const morgan = require('morgan');
 
 // Import routes
-const analyticsRoutes = require('./routes/analytics');
-const campaignRoutes = require('./routes/campaigns');
-const audienceRoutes = require('./routes/audience');
-const fraudRoutes = require('./routes/fraud');
-const insightsRoutes = require('./routes/insights');
-const geoRoutes = require('./routes/geo');
-const settingsRoutes = require('./routes/settings');
-const usersRoutes = require('./routes/users');
-const campaignManagerRoutes = require('./routes/campaignManager');
-const creativesRoutes = require('./routes/creatives');
-const uploadRoutes = require('./routes/upload');
-const publishRoutes = require('./routes/publish');
-const budgetRoutes = require('./routes/budget');
-const triggersRoutes = require('./routes/triggers');
-const croRoutes = require('./routes/cro');
-const retargetingRoutes = require('./routes/retargeting');
+const analyticsRoutes = require('./src/routes/analytics');
+const campaignRoutes = require('./src/routes/campaigns');
+const audienceRoutes = require('./src/routes/audience');
+const fraudRoutes = require('./src/routes/fraud');
+const insightsRoutes = require('./src/routes/insights');
+const geoRoutes = require('./src/routes/geo');
+const settingsRoutes = require('./src/routes/settings');
+const usersRoutes = require('./src/routes/users');
+const campaignManagerRoutes = require('./src/routes/campaignManager');
+const creativesRoutes = require('./src/routes/creatives');
+const uploadRoutes = require('./src/routes/upload');
+const publishRoutes = require('./src/routes/publish');
+const budgetRoutes = require('./src/routes/budget');
+const triggersRoutes = require('./src/routes/triggers');
+const croRoutes = require('./src/routes/cro');
+const retargetingRoutes = require('./src/routes/retargeting');
 
 const app = express();
 
