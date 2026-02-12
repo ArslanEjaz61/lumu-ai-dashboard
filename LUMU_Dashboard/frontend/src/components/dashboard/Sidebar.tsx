@@ -44,8 +44,8 @@ export function Sidebar() {
     const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
     const [branding, setBranding] = useState<BrandingData>({
-        dashboardName: 'LUMU',
-        tagline: 'AI Dashboard',
+        dashboardName: 'Bambly AI',
+        tagline: 'AI Marketing OS',
         logoUrl: '',
         primaryColor: '#10b981'
     });

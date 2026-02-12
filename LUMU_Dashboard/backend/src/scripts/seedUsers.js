@@ -10,7 +10,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/lumu_d
 const demoUsers = [
     {
         name: 'Admin User',
-        email: 'admin@lumu.ai',
+        email: 'admin@bambly.ai',
         password: 'admin123',
         role: 'admin',
         department: 'Management',
@@ -18,7 +18,7 @@ const demoUsers = [
     },
     {
         name: 'Marketing Manager',
-        email: 'manager@lumu.ai',
+        email: 'manager@bambly.ai',
         password: 'manager123',
         role: 'manager',
         department: 'Marketing',
@@ -26,7 +26,7 @@ const demoUsers = [
     },
     {
         name: 'Marketing Analyst',
-        email: 'analyst@lumu.ai',
+        email: 'analyst@bambly.ai',
         password: 'analyst123',
         role: 'viewer',
         department: 'Analytics',

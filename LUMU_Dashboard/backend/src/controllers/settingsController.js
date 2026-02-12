@@ -253,7 +253,7 @@ exports.deleteUser = async (req, res) => {
 exports.getBranding = async (req, res) => {
     try {
         const settings = await Settings.getSettings();
-        res.json(settings.branding || { dashboardName: 'LUMU', tagline: 'AI Dashboard', logoUrl: '', primaryColor: '#10b981' });
+        res.json(settings.branding || { dashboardName: 'Bambly AI', tagline: 'AI Marketing OS', logoUrl: '', primaryColor: '#10b981' });
     } catch (error) {
         console.error('Get Branding Error:', error);
         res.status(500).json({ error: error.message });

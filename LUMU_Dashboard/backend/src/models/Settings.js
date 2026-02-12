@@ -71,8 +71,8 @@ const SettingsSchema = new mongoose.Schema({
 
     // Branding
     branding: {
-        dashboardName: { type: String, default: 'LUMU' },
-        tagline: { type: String, default: 'AI Dashboard' },
+        dashboardName: { type: String, default: 'Bambly AI' },
+        tagline: { type: String, default: 'AI Marketing OS' },
         logoUrl: { type: String, default: '' },
         primaryColor: { type: String, default: '#10b981' }
     },

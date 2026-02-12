@@ -81,7 +81,7 @@ export default function LoginPage() {
                         <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
                             <Sparkles className="text-white" size={28} />
                         </div>
-                        <h1 className="text-3xl font-bold text-white">LUMU AI</h1>
+                        <h1 className="text-3xl font-bold text-white">Bambly AI</h1>
                     </div>
                     <p className="text-white/80 text-lg">Marketing Operating System</p>
                 </div>
@@ -126,7 +126,7 @@ export default function LoginPage() {
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
                                 <Sparkles className="text-white" size={20} />
                             </div>
-                            <h1 className="text-2xl font-bold text-slate-900">LUMU AI</h1>
+                            <h1 className="text-2xl font-bold text-slate-900">Bambly AI</h1>
                         </div>
                     </div>
 
@@ -218,11 +218,11 @@ export default function LoginPage() {
                                 <div className="flex items-center justify-center gap-4 text-sm">
                                     <div className="text-center">
                                         <Badge variant="outline" className="mb-1">Admin</Badge>
-                                        <p className="text-xs text-slate-500">admin@lumu.ai</p>
+                                        <p className="text-xs text-slate-500">admin@bambly.ai</p>
                                     </div>
                                     <div className="text-center">
                                         <Badge variant="outline" className="mb-1">Manager</Badge>
-                                        <p className="text-xs text-slate-500">manager@lumu.ai</p>
+                                        <p className="text-xs text-slate-500">manager@bambly.ai</p>
                                     </div>
                                 </div>
                             </div>
@@ -230,7 +230,7 @@ export default function LoginPage() {
                     </Card>
 
                     <p className="text-center text-sm text-slate-500 mt-6">
-                        © 2024 LUMU AI. All rights reserved.
+                        © 2024 Bambly AI. All rights reserved.
                     </p>
                 </div>
             </div>

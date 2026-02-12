@@ -6,8 +6,8 @@ import { ClientLayout } from "@/components/layout/ClientLayout";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "LUMU AI Dashboard",
-  description: "AI-Powered Marketing Analytics Dashboard for LUMU Pakistan",
+  title: "Bambly AI Dashboard",
+  description: "AI-Powered Marketing Operating System",
 };
 
 export default function RootLayout({

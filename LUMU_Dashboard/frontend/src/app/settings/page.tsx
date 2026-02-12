@@ -66,8 +66,8 @@ export default function SettingsPage() {
     const [clickCease, setClickCease] = useState({ apiKey: '', domain: '' });
     const [ga4, setGa4] = useState({ propertyId: '', accessToken: '' });
     const [branding, setBranding] = useState({
-        dashboardName: 'LUMU',
-        tagline: 'AI Dashboard',
+        dashboardName: 'Bambly AI',
+        tagline: 'AI Marketing OS',
         logoUrl: '',
         primaryColor: '#10b981'
     });
@@ -748,7 +748,7 @@ export default function SettingsPage() {
                                         )}
                                     </div>
                                     <div>
-                                        <h1 className="font-bold text-lg text-white">{branding.dashboardName || 'LUMU'}</h1>
+                                        <h1 className="font-bold text-lg text-white">{branding.dashboardName || 'Bambly AI'}</h1>
                                         <p className="text-xs text-slate-400">{branding.tagline || 'AI Dashboard'}</p>
                                     </div>
                                 </div>
